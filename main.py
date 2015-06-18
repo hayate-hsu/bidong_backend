@@ -897,7 +897,7 @@ class HolderHandler(AccountBaseHandler):
         _user, renters = account.get_renters(holder)
         _user.pop('possword', '')
 
-        accept = self.request.headers.get('Accept', 'application/json')
+        accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('text/html'):
             _user['mobile'] = ''.join([_user['mobile'][:3], '****', _user['mobile'][7:]])
             _user['realname'] = _user['realname'][0] + ' **'
