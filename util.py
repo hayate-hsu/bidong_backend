@@ -32,9 +32,12 @@ def check_codes(method):
         Encode unicode to utf-8 codes
     '''
     functools.wraps(method)
-    def wrapper(*args):
+    def wrapper(*args, **kwargs):
         args = [arg.encode('utf-8', 'replace') if isinstance(arg, unicode) else arg for arg in args]
-        return method(*args)
+        for key,value in kwargs.iteritems():
+            if isinstance(value, unicode):
+                kwargs[key] = value.encode('utf-8', 'replace')
+        return method(*args, **kwargs)
     return wrapper
 
 def now(fmt=DATE_FORMAT, hours=0, days=0):

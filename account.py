@@ -12,7 +12,7 @@ def get_manager(user):
     return db.get_manager(user)
 
 @util.check_codes
-def create_holder(weixin, mobile, address, realname, email):
+def create_holder(weixin, mobile, address, realname):
     '''
     '''
     password = util.generate_password()
@@ -31,6 +31,7 @@ def get_holders(page, verified=0):
         mask = 3
     return db.get_holders(page, mask)
 
+@util.check_codes
 def verify_holder(holder, **kwargs):
     '''
     '''
@@ -41,10 +42,22 @@ def verify_holder(holder, **kwargs):
 def remove_holder(holder):
     db.remove_holder(holder)
 
-def create_aps(aps):
+@util.check_codes
+def create_ap(**kwargs):
     '''
+        mac
+        vendor
+        model
+        fm
+        profile
+        position
     '''
-    db.add_aps(aps)
+    kwargs['mac'] = kwargs['mac'].upper()
+    db.add_ap(**kwargs)
+
+@util.check_codes
+def update_ap(mac, **kwargs):
+    db.update_ap(mac, **kwargs)
 
 def bind_aps(holder, aps):
     '''
@@ -61,8 +74,8 @@ def remove_aps(aps):
     '''
     db.remove_aps(aps)
 
-def get_aps(holder=None, mac=None):
-    return db.get_aps(holder, mac)
+def get_aps(field, query):
+    return db.get_aps(field, query)
 
 def get_holder_by_mac(mac_addr):
     return db.get_holder_by_mac()

@@ -618,7 +618,6 @@ class ManagerHandler(AccountBaseHandler):
     def get(self, action=None):
         '''
         '''
-        print(self.request)
         token,manager='',''
         action = action.strip('/')
         try:
@@ -639,28 +638,56 @@ class ManagerHandler(AccountBaseHandler):
 
     @_trace_wrapper
     @_parse_body
-    def post(self, _id=None):
+    def post(self, action=None):
         '''
         '''
-        user = self.get_argument('user')
-        password = self.get_argument('password')
-
-        _user = account.get_manager(user)
-        if not _user:
-            raise HTTPError(404, reason='account not existed')
-        if password != _user['password']:
-            raise HTTPError(400, reason='password error')
-                
-        token = util.token(user)
-        # self.set_secure_cookie('manager', user, domain='www.bidongwifi.com', path='/manager')
-        # self.set_secure_cookie('m_token', token, domain='www.bidongwifi.com', path='/manager')
-        # self.set_secure_cookie('manager', user, domain='www.bidongwifi.com')
-        # self.set_secure_cookie('m_token', token, domain='www.bidongwifi.com')
-        content_type = self.request.headers.get('Content-Type', '')
-        if content_type.startswith('application/json'):
-            self.render_json_response(Manager=user, Token=token, **OK)
+        if action:
+            token = self.get_argument('token')
+            manager = self.get_argument('manager')
+            # check manager token
+            self.check_token(manager, token)
+            ids = []
+            # add holder & ap records
+            if action == 'holder':
+                holders = self.get_argument('holders')
+                for holder in holders:
+                    _id = account.create_holder('', holder['mobile'], holder['address'], holder['realname'])
+                    if _id:
+                        # verify holder
+                        account.verify_holder(_id, expire_date=holder['expire_date'], mask=3, verify=1)
+                        ids.append(_id)
+            elif action == 'ap':
+                aps = self.get_argument('aps', [])
+                # kwargs = {}
+                # kwargs['vendor'] = self.get_argument('vendor')
+                # kwargs['model'] = self.get_argument('model')
+                # kwargs['mac'] = self.get_argument('mac')
+                # kwargs['profile'] = self.get_argument('profile')
+                # kwargs['fm'] = self.get_argument('fm')
+                # ap deploy position
+                # kwargs['point'] = (100, 99)
+                for ap in aps:
+                    account.create_ap(**ap)
+            else:
+                raise HTTPError(400)
+            self.render_json_response(Ids=ids, **OK)
         else:
-            self.redirect('/manager?token={}&manager={}'.format(token, user))
+            # manager login
+            user = self.get_argument('user')
+            password = self.get_argument('password')
+
+            _user = account.get_manager(user)
+            if not _user:
+                raise HTTPError(404, reason='account not existed')
+            if password != _user['password']:
+                raise HTTPError(400, reason='password error')
+                    
+            token = util.token(user)
+            content_type = self.request.headers.get('Content-Type', '')
+            if content_type.startswith('application/json'):
+                self.render_json_response(Manager=user, Token=token, **OK)
+            else:
+                self.redirect('/manager?token={}&manager={}'.format(token, user))
 
     @_trace_wrapper
     @_parse_body
@@ -674,19 +701,12 @@ class ManagerHandler(AccountBaseHandler):
 
         if action == 'holder':
             holders = self.get_argument('holders')
-            print(holders)
             for holder in holders:
                 account.verify_holder(holder.pop('id'), **holder)
         elif action == 'ap':
-            kwargs = {}
-            kwargs['vendor'] = self.get_argument('vendor')
-            kwargs['model'] = self.get_argument('model')
-            kwargs['mac'] = self.get_argument('mac')
-            kwargs['profile'] = self.get_argument('profile')
-            kwargs['fm'] = self.get_argument('fm')
-            # ap deploy position
-            # kwargs['point'] = (100, 99)
-            account.create_aps([kwargs, ])
+            aps = self.get_argument('aps')
+            for ap in aps:
+                account.update_ap(ap.pop('mac'), **ap)
         elif action == 'bind_ap':
             holder = self.get_argument('holder')
             aps = self.get_argument('aps')
@@ -739,20 +759,16 @@ class ManagerHandler(AccountBaseHandler):
                 holder's ap
                 special ap
         '''
-        holder = self.get_argument('holder', '')
-        mac = self.get_argument('mac', '')
-        records = []
-        if holder:
-            # get holder's ap
-            records = account.get_aps(holder=holder)
-            pass
-        elif mac:
-            # get special
-            records = account.get_aps(mac=mac)
-        else:
-            # get mac
-            pass
+        # holder = self.get_argument('holder', '')
+        # mac = self.get_argument('mac', '')
+        # default query holder's aps
+        field = 'holder'
+        query = self.get_argument('field')
+        if ':' in query:
+            # query special ap 
+            field = 'mac'
 
+        records = account.get_aps(field, query)
         self.render_json_response(aps=records, **OK)
 
     def room(self, holder):
@@ -845,11 +861,6 @@ class AccountHandler(AccountBaseHandler):
 
         
         _user.pop('possword', '')
-        # self.set_secure_cookie('user', user)
-        # self.set_secure_cookie('p_code', password)
-        # self.set_secure_cookie('token', token)
-        # mask = _user[mask]
-        # self.redirect('/account/{}?token={}'.format(_user['user'], token))
         self.render_json_response(User=_user['user'], Token=token, **OK)
 
     def get_holder(self, ap_mac):
@@ -896,22 +907,16 @@ class HolderHandler(AccountBaseHandler):
         # get renters
         _user, renters = account.get_renters(holder)
         _user.pop('possword', '')
+        logger.info('test: {}'.format(self.request))
 
         accept = self.request.headers.get('Accept', 'text/html')
-        if accept.startswith('text/html'):
+        if accept.startswith('application/json'):
+            self.render_json_response(Account=_user, Renters=renters, **OK)
+        else:
             _user['mobile'] = ''.join([_user['mobile'][:3], '****', _user['mobile'][7:]])
             _user['realname'] = _user['realname'][0] + ' **'
-            # if (isinstance(_user['realname'], unicode)):
-            #     pass
-            # else:
-            #     pass
             self.render('addclient.html', token=token, date=_now('%Y-%m-%d'), 
                         renters=renters, **_user)
-            # else:
-            #     self.render('addclient02.html', token=token, renters=renters, 
-            #                 date=_now('%Y-%m-%d'), **_user)
-        else:
-            self.render_json_response(Account=_user, Renters=renters, **OK)
 
     @_trace_wrapper
     @_parse_body
@@ -924,8 +929,8 @@ class HolderHandler(AccountBaseHandler):
         mobile = self.get_argument('mobile')
         address = self.get_argument('address')
         realname = self.get_argument('realname')
-        email = self.get_argument('email', '')
-        _id = account.create_holder(weixin, mobile, address, realname, email)
+        # email = self.get_argument('email', '')
+        _id = account.create_holder(weixin, mobile, address, realname)
         self.render_json_response(ID=_id, **OK)
 
     @_trace_wrapper

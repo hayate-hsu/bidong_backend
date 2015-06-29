@@ -139,7 +139,7 @@ class Store():
                 '''.format(mobile, weixin, email, mask, address, 
                            realname, now, expire_date)
                 cur.execute(sql)
-                sql = 'select id from account where mobile = "{}" and weixin = "{}"'.format(mobile, weixin)
+                sql = 'select id from account where mobile = "{}"'.format(mobile)
                 cur.execute(sql)
                 user = cur.fetchone()
 
@@ -150,7 +150,7 @@ class Store():
                 time_length, flow_length, expire_date, coin, 
                 mac, ip, holder, ends) values("{}", "{}", {}, 
                 {}, 0, "{}", 0, "", "", {}, 2)
-                '''.format(str(user['id']), password, mask, time_length, expire_date, user[id])
+                '''.format(str(user['id']), password, mask, time_length, expire_date, user['id'])
                 cur.execute(sql)
             conn.commit()
             return user['id']
@@ -171,7 +171,7 @@ class Store():
             cur.execute(sql)
             results = cur.fetchall()
             results = results if results else []
-            return pages, results
+            return int((pages+per-1)/per), results
 
     def update_holder(self, holder, verify, frozen, **kwargs):
         '''
@@ -180,10 +180,12 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            modify_str = ', '.join('{} = "{}"'.format(key, value) for key,value in kwargs.iteritems())
-            sql = '''update account set {} where id = "{}"
-            '''.format(modify_str, holder)
-            cur.execute(sql)
+            print('kwargs:', kwargs)
+            if kwargs:
+                modify_str = ', '.join('{} = "{}"'.format(key, value) for key,value in kwargs.iteritems())
+                sql = 'update account set {} where id = {}'.format(modify_str, holder)
+                print(sql)
+                cur.execute(sql)
 
             cur.execute('select mask from bd_account where user = "{}"'.format(holder))
             _user = cur.fetchone()
@@ -233,6 +235,9 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            # delete binded macs
+            sql = 'delete from holder_ap where holder = "{}"'.format(holder)
+            cur.execute(sql)
             # remove renters
             sql = 'delete from bd_account where holder = "{}"'.format(holder)
             cur.execute(sql)
@@ -241,35 +246,51 @@ class Store():
             cur.execute(sql)
             conn.commit()
 
-    def add_aps(self, aps):
+    def add_ap(self, **kwargs):
         '''
         '''
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            for ap in aps:
-                key_str = ', '.join(ap.keys())
-                value_str = ', '.join(['"%s"'%c for c in ap.values()])
-                sql = 'insert into aps ({}) values({})'.format(key_str, value_str)
-                cur.execute(sql)
+            key_str = ', '.join(kwargs.keys())
+            value_str = ', '.join(['"%s"'%c for c in kwargs.values()])
+            sql = 'insert into aps ({}) values({})'.format(key_str, value_str)
+            cur.execute(sql)
             conn.commit()
 
-    def get_aps(self, holder, mac):
+    def update_ap(self, mac, **kwargs):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            modify_str = ', '.join('{} = "{}"'.format(key,value) for key,value in kwargs.iteritems())
+            sql = 'update aps set {} where mac = "{}"'.format(modify_str, mac)
+            cur.execute(sql)
+            conn.commit()
+            
+
+    def get_aps(self, field, query):
         '''
         '''
         with Cursor(self.dbpool) as cur:
             sql = ''
-            if holder:
+            if field == 'holder':
                 sql = '''select aps.*, holder_ap.holder from aps, holder_ap 
-                where holder_ap.holder = {} and holder_ap.mac = aps.mac'''.format(holder)
-            elif mac:
-                sql = 'select * from aps where mac = "{}"'.format(mac)
+                where holder_ap.holder = {} and holder_ap.mac = aps.mac group by aps.mac'''.format(query)
             else:
-                # current return []
-                return []
+                sql = 'select * from aps where mac = "{}"'.format(query)
             cur.execute(sql)
+
             results = cur.fetchall()
-            return results if results else []
+            results = results if results else [] 
+            for item in results:
+                if 'holder' not in item:
+                    # only search special ap by mac, the holder field not existed
+                    sql = 'select holder from holder_ap where mac = "{}"'.format(query)
+                    cur.execute(sql)
+                    record = cur.fetchone()
+                    item['holder'] = record['holder'] if record else ''
+            return results
 
     def bind_aps(self, holder, aps):
         '''
@@ -435,10 +456,10 @@ class Store():
             sql = '''insert into bd_account (user, password, mask, 
             time_length, flow_length, expire_date, coin, 
             mac, ip, holder, ends) values("{}", "{}", {}, 0, 0, "", {}, "", "", 0, 2)
-            '''.format(str(user[0]), password, mask, coin)
+            '''.format(str(user['id']), password, mask, coin)
             cur.execute(sql)
             conn.commit()
-            return user[0]# , password, mask, time_length
+            return user['id']# , password, mask, time_length
 
     def update_user(self, user, account):
         '''
