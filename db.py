@@ -100,7 +100,7 @@ class Store():
             return cur.fetchone()
 
     def add_holder(self, weixin, password, mobile, expire_date,
-                      email='', address='', realname=''):
+                      email='', address='', realname='', portal='login.html', billing=0):
         '''
             add hold user, user must with tel & address
             mask = 0 + 2**1 + [2**8]
@@ -152,6 +152,7 @@ class Store():
                 {}, 0, "{}", 0, "", "", {}, 2)
                 '''.format(str(user['id']), password, mask, time_length, expire_date, user['id'])
                 cur.execute(sql)
+
             conn.commit()
             return user['id']
 
@@ -166,7 +167,7 @@ class Store():
                 cur.execute(sql)
                 pages = cur.fetchone()['counts']
             start = page*per
-            sql = '''select id, realname, mobile, mask, address, expire_date from account 
+            sql = '''select id, realname, mobile, mask, address, expire_date, portal, policy from account 
             where mask & 3 = {} order by id desc limit {}, {}'''.format(mask, start, per)
             cur.execute(sql)
             results = cur.fetchall()
@@ -225,6 +226,17 @@ class Store():
                 for renter in renters:
                     sql = 'update bd_account set mask = {} where user = "{}"'.format(renter['mask'] ^ 1<<30, renter['user'])
                     cur.execute(sql)
+
+            # update holder's billing settings
+            modify_dict = {}
+            if 'portal' in kwargs:
+                modify_dict['portal'] = kwargs['portal']
+            if 'policy' in kwargs:
+                modify_dict['policy'] = kwargs['policy']
+            if modify_dict:
+                modify_str = ', '.join('{} = "{}"'.format(key,value) for key,value in modify_dict.iteritems())
+                sql = 'update account set {} where id = {}'.format(modify_str, holder)
+                cur.execute(sql)
 
             conn.commit()
 
@@ -471,6 +483,17 @@ class Store():
             cur.execute(sql)
             # sql = 'update bd_account set mask = {} where user = "{}"'.format(account['mask'], str(account['id'])) 
             # cur.execute(sql)
+            conn.commit()
+
+    def update_user2(self, user, **kwargs):
+        '''
+            update bd_account info 
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            update_str = ', '.join(['{}="{}"'.format(key, value) for key,value in kwargs.iteritems()])
+            sql = 'update bd_account set {} where user = "{}"'.format(update_str, user)
+            cur.execute(sql)
             conn.commit()
 
     def get_user(self, user, ends=1<<5):

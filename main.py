@@ -40,6 +40,8 @@ import xml.etree.ElementTree as ET
 import mako.lookup
 import mako.template
 
+from MySQLdb import (IntegrityError)
+
 import user_agents
 
 logger = None
@@ -667,7 +669,11 @@ class ManagerHandler(AccountBaseHandler):
                 # ap deploy position
                 # kwargs['point'] = (100, 99)
                 for ap in aps:
-                    account.create_ap(**ap)
+                    try:
+                        account.create_ap(**ap)
+                    except IntegrityError:
+                        logger.warning('ap\'s mac exsited: {}'.format(ap['mac']))
+                        raise HTTPError(400, reason='mac address existed')
             else:
                 raise HTTPError(400)
             self.render_json_response(Ids=ids, **OK)
@@ -750,7 +756,7 @@ class ManagerHandler(AccountBaseHandler):
         pages, holders = account.get_holders(page, verified)
         if page == 0:
             return self.render_json_response(Code=200, Msg='OK', Holders=holders, Pages=pages)
-        return self.render_json_response(Code=200, Msg='OK', Holders=holders)
+        return self.render_json_response(Code=200, Msg='OK', Holders=holders, Pages=pages)
 
     @_trace_wrapper
     def ap(self):
@@ -855,7 +861,7 @@ class AccountHandler(AccountBaseHandler):
         if not _user:
             raise HTTPError(404, reason='account not existed')
         if password != _user['password']:
-            raise HTTPError(400, reason='password error')
+            raise HTTPError(403, reason='password error')
 
         token = util.token(user)
 
@@ -863,8 +869,28 @@ class AccountHandler(AccountBaseHandler):
         _user.pop('possword', '')
         self.render_json_response(User=_user['user'], Token=token, **OK)
 
-    def get_holder(self, ap_mac):
-        pass
+    @_trace_wrapper
+    @_parse_body
+    def put(self, user):
+        '''
+            update bd_account's info
+        '''
+        token = self.get_argument('token')
+        self.check_token(user, token)
+        _user = account.get_bd_account(user)
+        if not _user:
+            raise HTTPError(404, reason='account not existed')
+        kwargs = {}
+        newp = self.get_argument('newp', '')
+        if newp:
+            password = self.get_argument('password')
+            if password != _user['password']:
+                raise HTTPError(403, reason='password error')
+            kwargs['password'] = newp
+
+        account.update_account(user, **kwargs)
+        self.render_json_response(**OK)
+
 
 class BindHandler(AccountBaseHandler):
     '''

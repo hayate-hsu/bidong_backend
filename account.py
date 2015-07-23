@@ -12,13 +12,18 @@ def get_manager(user):
     return db.get_manager(user)
 
 @util.check_codes
-def create_holder(weixin, mobile, address, realname):
+def create_holder(weixin, mobile, address, realname, portal='login.html', billing=0):
     '''
+        portal : authentication page
+        billing : billing type
+            0 : normal billing type (coin & expire_date)
+            1 : free
     '''
     password = util.generate_password()
     # now = util.now('%Y-%m-%d')
     _id = db.add_holder(weixin, password, mobile, '', 
-                        address=address, realname=realname)
+                        address=address, realname=realname, 
+                        portal=portal, billing=billing)
     return _id
 
 def get_holders(page, verified=0):
@@ -145,6 +150,14 @@ def get_weixin_account(openid):
     account = db.get_user(openid)
     _user = db.get_bd_user(str(account['id']))
     return _user
+
+def update_account(user, **kwargs):
+    '''
+        update user's account info(password...)
+        kwargs' key must be bd_account column name
+    '''
+    if kwargs:
+        db.update_user2(user, **kwargs)
 
 def bind(weixin, user):
     '''
