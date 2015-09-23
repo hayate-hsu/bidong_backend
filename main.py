@@ -23,6 +23,7 @@ define('port', default=8080, help='running on the given port', type=int)
 import errno
 import os
 import sys
+import re
 
 # import struct
 # import hashlib
@@ -54,6 +55,7 @@ import settings
 
 import account
 import _const
+import imapi
 
 json_encoder = util.json_encoder
 json_decoder = util.json_decoder
@@ -72,6 +74,8 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r'/account/(.*?)/bind', BindHandler),
+            (r'/account/(.*)/merge', MergeHandler),
+            (r'/account/(.*)/$', AccountHistoryHandler),
             (r'/account/?(.*)$', AccountHandler),
             (r'/m_web/(.*)', WeiXinViewHandler),
             (r'/(getdbi)\.html', FactoryHandler),
@@ -84,7 +88,23 @@ class Application(tornado.web.Application):
             (r'/holder/(.*)/room$', RoomHandler),
             (r'/holder/?(.*)$', HolderHandler),
             (r'/manager/?(.*)$', ManagerHandler),
-            # (r'/test', TestHandler),
+
+            # register account
+            (r'/register', RegisterHandler),
+
+            # get mobile verify code
+            (r'/mobile$', MobileHandler),
+            (r'/ns/bind$', NSBindHandler),
+
+            # nansha interface
+            (r'/ns/manager', NSManagerHandler),
+            # add/update/delete nansha employee
+            (r'/ns/account/?(.*)$', NSAccountHandler),
+            # add notice
+            (r'/ns/notices?/?(.*)$', NSNoticeHandler),
+
+            # group interface
+            (r'groups/?(.*)$', GroupsHandler),
             (r'/', MainHandler),
         ]
         settings = {
@@ -388,7 +408,8 @@ class WeiXinViewHandler(BaseHandler):
 
 
     def auto_login(self, openid):
-        _user = account.get_account_by_openid(openid)
+        # _user = account.get_account_by_openid(openid)
+        _user = account.get_account(weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
         # if not _user['mask']>>1 & 1:
@@ -404,7 +425,8 @@ class WeiXinViewHandler(BaseHandler):
         self.redirect('/account/{}?token={}'.format(_user['user'], token))
 
     def get_holder(self, openid):
-        _user = account.get_account_by_openid(openid)
+        # _user = account.get_account_by_openid(openid)
+        _user = account.get_account(weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
         if not _user['mask']>>1 & 1:
@@ -414,13 +436,15 @@ class WeiXinViewHandler(BaseHandler):
         self.redirect('/holder/{}?token={}'.format(_user['user'], token))
 
     def _check_weixin_account(self, openid):
-        _user = account.get_account_by_openid(openid)
+        # _user = account.get_account_by_openid(openid)
+        _user = account.get_account(weixin=openid)
         if not _user:
             account.create_weixin_account(openid)
 
     @_trace_wrapper
     def earn_coin(self, openid):
-        _user = account.get_account_by_openid(openid)
+        # _user = account.get_account_by_openid(openid)
+        _user = account.get_account(weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
 
@@ -568,7 +592,8 @@ class WeiXinHandler(BaseHandler):
         self.finish()
 
     def _check_weixin_account(self, openid):
-        _user = account.get_account_by_openid(openid)
+        # _user = account.get_account_by_openid(openid)
+        _user = account.get_account(weixin=openid)
         if not _user:
             account.create_weixin_account(openid)
 
@@ -597,7 +622,7 @@ class AccountBaseHandler(BaseHandler):
         token, expired = token.split('|')
         token2 = util.token2(user, expired)
         if token != token2:
-            raise HTTPError(400)
+            raise HTTPError(400, reason='Abnormal token')
 
     def check_holder(self, holder):
         '''
@@ -605,7 +630,7 @@ class AccountBaseHandler(BaseHandler):
             holder/ap/room manager handler need this function to
             check holder account
         '''
-        _user = account.get_account(holder)
+        _user = account.get_account(id=holder)
         if not _user:
             raise HTTPError(404)
         if not _user['mask']>>1 & 1:
@@ -685,8 +710,8 @@ class ManagerHandler(AccountBaseHandler):
             _user = account.get_manager(user)
             if not _user:
                 raise HTTPError(404, reason='account not existed')
-            if password != _user['password']:
-                raise HTTPError(400, reason='password error')
+            if _user['password'] not in (password, util.md5(password).hexdigest()):
+                raise HTTPError(403, reason='password error')
                     
             token = util.token(user)
             content_type = self.request.headers.get('Content-Type', '')
@@ -785,6 +810,58 @@ class ManagerHandler(AccountBaseHandler):
         rooms = sorted(rooms)
         return self.render_json_response(Code=200, Msg='OK', Rooms=rooms)
 
+class Manager2Handler(AccountBaseHandler):
+    '''
+        api/manager/*
+        maintain administrator account
+    '''
+    def get(self):
+        pass
+
+    def post(self):
+        pass
+
+    def put(self):
+        pass
+
+class GroupsHandler(AccountBaseHandler):
+    '''
+        manager groups
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def get(self, _id=None):
+        '''
+            get groups or special group details
+        '''
+        token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, token)
+        if _id:
+            # get special group
+            record = account.get_group(_id)
+            return self.render_json_response(Code=200, Msg='OK', group=record)
+        else:
+            records= account.get_groups()
+            return self.render_json_response(Code=200, Msg='OK', groups=records)
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        '''
+            create new groups
+        '''
+        token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, token)
+
+        name = self.get_argument('name')
+        note = self.get_argument('note')
+
+        account.create_groups(name, note)
+
+        self.render_json_response(Code=200, Msg='OK') 
+
 class TestHandler(BaseHandler):
     @_trace_wrapper
     def post(self):
@@ -828,22 +905,6 @@ class AccountHandler(AccountBaseHandler):
 
         days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
 
-        # days, hours = 0,'00:00'
-        # # check current data
-        # if _user['expire_date']:
-        #     _expire_datetime = datetime.datetime.strptime(_user['expire_date'], '%Y-%m-%d')
-        #     delta = _expire_datetime - datetime.datetime.now()
-        #     days = delta.days
-        #     if days < 0:
-        #         days = 0
-        #     else:
-        #         days = days + 1
-
-        # if _user['coin']>0:
-        #     # one coin = 3 minutes
-        #     times = _user['coin']*3*60
-        #     hours = '{:02d}:{:02d}'.format(int(times/3600), int(times%3600/60))
-
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, days=days, hours=hours, **OK)
@@ -854,19 +915,21 @@ class AccountHandler(AccountBaseHandler):
     @_trace_wrapper
     @_parse_body
     def post(self, user=None):
+        logger.info('Request:{}'.format(self.request.arguments))
         user = self.get_argument('user')
         password = self.get_argument('password')
 
         _user = account.get_bd_account(user)
         if not _user:
             raise HTTPError(404, reason='account not existed')
-        if password != _user['password']:
+        # if password != _user['password']:
+        # if _user['password'] not in (password, util.md5(password).hexdigest(), util.md5(_user['password']).hexdigest()):
+        if password not in (_user['password'], util.md5(_user['password']).hexdigest()):
             raise HTTPError(403, reason='password error')
 
         token = util.token(user)
 
-        
-        _user.pop('possword', '')
+        _user.pop('password', '')
         self.render_json_response(User=_user['user'], Token=token, **OK)
 
     @_trace_wrapper
@@ -880,9 +943,11 @@ class AccountHandler(AccountBaseHandler):
         _user = account.get_bd_account(user)
         if not _user:
             raise HTTPError(404, reason='account not existed')
+
         kwargs = {}
         newp = self.get_argument('newp', '')
         if newp:
+            # chanage password
             password = self.get_argument('password')
             if password != _user['password']:
                 raise HTTPError(403, reason='password error')
@@ -891,7 +956,63 @@ class AccountHandler(AccountBaseHandler):
         account.update_account(user, **kwargs)
         self.render_json_response(**OK)
 
+    @_trace_wrapper
+    @_parse_body
+    def delete(self, user):
+        '''
+            delete account & wireless login history
+        '''
+        token = self.get_argument('token')
+        self.check_token(user, token)
+        _user = account.get_bd_account(user)
+        if not _user:
+            raise HTTPError(404, reason='account not existed')
+        
+        # mask = int(self.get_argument('mask', 0))
+        account.remove_account(user, 1)
 
+        self.render_json_response(**OK)
+
+class AccountHistoryHandler(AccountBaseHandler):
+    '''
+        process bd account
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def delete(self, user):
+        '''
+            delete account & wireless login history
+        '''
+        token = self.get_argument('token')
+        self.check_token(user, token)
+        _user = account.get_bd_account(user)
+        if not _user:
+            raise HTTPError(404, reason='account not existed')
+        
+        # mask = int(self.get_argument('mask', 0))
+        account.remove_account(user, 0)
+
+        self.render_json_response(**OK)
+
+class MergeHandler(AccountBaseHandler):
+    '''
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def post(self, user):
+        '''
+            app account merge mac(account)
+        '''
+        token = self.get_argument('token')
+        self.check_token(user, token)
+        mask = int(self.get_argument('mask'))
+        uuid = self.get_argument('uuid')
+        _id = account.merge_account(user, uuid, mask)
+        _user = account.get_bd_account(_id)
+
+        token = util.token(user)
+        return self.render_json_response(Code=200, Msg='OK', Token=token, **_user)
+        
 class BindHandler(AccountBaseHandler):
     '''
     '''
@@ -993,7 +1114,7 @@ class HolderHandler(AccountBaseHandler):
     def delete(self, holder):
         raise HTTPError(405)
         holder = int(holder)
-        _user = account.get_account(holder)
+        _user = account.get_account(id=holder)
         if _user:
             if not _user['mask']>>1 & 1:
                 raise HTTPError(404, 'Not Holder')
@@ -1084,6 +1205,368 @@ class RoomHandler(AccountBaseHandler):
         logger.info('{} remove room: {}'.format(holder, room))
         account.remove_holder_room(holder, room)
         self.render_json_response(**OK)
+
+class MobileHandler(BaseHandler):
+    '''
+        verify mobile and send verify code
+    '''
+    MOBILE_PATTERN = re.compile(r'^(13[0-9]|14[57]|15[0-35-9]|17[678]18[0-9]\d{8}$)')
+    URL = ''
+
+    @tornado.gen.coroutine
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        '''
+            check mobile and send verify code to user
+            client check mobile number
+        '''
+        mobile = self.get_argument('mobile')
+        if self.check_mobile(mobile):
+            raise HTTPError(400, reason='invalid mobile number')
+        flags = self.get_argument('flags')
+        if flags == 1:
+            # check account is nansha employee account
+            record = account.get_ns_employee(mobile=mobile)
+            if not record:
+                return self.render_json_response(Code=403, Msg='mobile not nansha employee')
+        
+        verify = util.generate_verify_code()
+        # call message gateway 
+        # send_message(mobile, util.generate_verify_code()) 
+        # http_client = AsyncHTTPClient() 
+        # response = yield http_client.fetch(self.URL)
+        self.render_json_response(verify=verify, **OK)
+
+    def check_mobile(self, mobile):
+        return True if re.match(self.MOBILE_PATTERN, mobile) else False
+
+class VersionHandler(BaseHandler):
+    '''
+        check app's version
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def get(self):
+        '''
+            if ver is True, check version
+            return version record (contain mask)
+        '''
+        mask = int(self.get_argument('mask'))
+        ver = self.get_argument('ver', '')
+        record = account.get_version(mask)
+        if ver:
+            newest, least = account.check_version(ver, mask)
+            record[mask] = 1 if newest else 0 + 2 if least else 0
+
+        self.render_json_response(Code=200, Msg='OK', **record)
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        mask = int(self.get_argument('mask'))
+        ver = self.get_argument('ver')
+
+        account.create_version(ver, mask)
+        self.render_json_response(Code=200, Msg='OK')
+
+    @_trace_wrapper
+    @_parse_body
+    def put(self):
+        mask = int(self.get_argument('mask'))
+        kwargs = {}
+        kwargs['newest'] = self.get_argument('newest', '')
+        kwargs['least'] = self.get_argument('least', '')
+        for key in kwargs.keys():
+            if not kwargs[key]:
+                kwargs.pop(key)
+        if kwargs:
+            account.update_version(mask, **kwargs)
+
+        self.render_json_response(**OK)
+
+#***************************************************
+#
+#   
+#     Nansha city handler
+#
+#
+#****************************************************
+class RegisterHandler(BaseHandler):
+    '''
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        mask = int(self.get_argument('mask'))
+        uuid = self.get_argument('uuid')
+        _account = account.get_account(uuid=uuid)
+        _id = ''
+        if not _account:
+            # can't found, create new account
+            _id = account.create_app_account(uuid, mask)
+        else:
+            _id = _account['id']
+        _user = account.get_bd_account(_id)
+        
+        return self.render_json_response(Code=200, Msg='OK', **_user)
+
+#***************************************************
+#
+#   
+#     Nansha city handler
+#
+#
+#****************************************************
+class NSNoticeHandler(BaseHandler):
+    '''
+        App get notices
+        Manager add new record 
+    '''
+    PER = 10
+
+    def check_token(self, user, token):
+        token, expired = token.split('|')
+        token2 = util.token2(user, expired)
+        if token != token2:
+            raise HTTPError(400, reason='abnormal token')
+
+    @_trace_wrapper
+    @_parse_body
+    def get(self, _id=''):
+        '''
+            get notices & special notice
+        '''
+        accept = self.request.headers.get('Accept', 'text/html')
+        if _id:
+            # get special notice
+            notice = account.get_notice(_id)
+            if not notice:
+                raise HTTPError(404, reason='Can\'t found notice:{}'.format(_id))
+            if accept.startswith('application/json'):
+                return self.render_json_response(Code=200, Msg='OK', **notice)
+            else:
+                return self.render('nansha/{}.html'.format(_id), **notice)
+        else:
+            # get notices
+            # item: id, datetime, caption, 
+            page = self.get_argument('page', 0)
+            notices = account.get_notices(page)
+            isEnd = 0
+            if len(notices) < self.PER:
+                isEnd = 1
+            return self.render_json_response(notices=notices, isEnd=isEnd, **OK)
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self, _id=None):
+        '''
+            add new notice
+        '''
+        m_token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, m_token)
+
+        caption = self.get_argument('caption')
+        summary = self.get_argument('summary')
+        mask = int(self.get_argument('mask', 0))
+
+        _id = account.publish_notice(caption=caption, summary=summary, mask=mask)
+
+        logger.info('publish new notice: id:{}, mask:{}'.format(_id, mask))
+
+        self.render_json_response(id=_id, **OK)
+
+    @_trace_wrapper
+    @_parse_body
+    def put(self, _id):
+        '''
+            update existed notice
+        '''
+        m_token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, m_token)
+
+        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
+        kwargs.pop('token')
+        kwargs.pop('manager')
+
+        account.update_notice(_id, **kwargs)
+
+        self.render_json_response(id=_id, **OK)
+
+    @_trace_wrapper
+    @_parse_body
+    def delete(self, _id):
+        '''
+            update existed notice
+        '''
+        m_token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, m_token)
+
+        account.remove_notice(_id)
+
+        self.render_json_response(id=_id, **OK)
+
+class NSManagerHandler(BaseHandler):
+    '''
+    '''
+    # def get(self):
+    #     pass
+
+    # def put(self):
+    #     pass
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        '''
+            manager account login
+            password: md5(password)
+            admin : 
+                1 : super manager
+                1<<1 : bidong manager
+                1<<2 : nansha manager
+        '''
+        manager = self.get_argument('manager')
+        password = self.get_argument('password')
+        manager = account.get_manager(manager, mask=1<<2)
+        if not manager:
+            raise HTTPError('404', reason='manager account can\'t found')
+        pw_md5 = util.md5(manager['password']).hexdigest()
+        if password != pw_md5:
+            raise HTTPError('401', reason='wrong password')
+
+        # user & password passed
+        token = util.token(manager['user'])
+
+        self.render_json_response(token=token, **OK)
+
+class NSAccountHandler(BaseHandler):
+    '''
+        manager edit employee's details
+    '''
+    def check_token(self, user, token):
+        token, expired = token.split('|')
+        token2 = util.token2(user, expired)
+        if token != token2:
+            raise HTTPError(400, reason='abnormal token')
+
+    @_trace_wrapper
+    @_parse_body
+    def get(self, employee=None):
+        '''
+            return special employee
+            can be searched by id & mobile
+        '''
+        kwargs = {}
+        if employee:
+            kwargs['id'] = employee
+        else:
+            kwargs['mobile'] = self.get_argument('mobile')
+        if not kwargs:
+            raise HTTPError(400)
+        record = account.get_ns_employee(**kwargs)
+        if not record:
+            raise HTTPError(404)
+
+        self.render_json_response(Code=200, Msg='OK', **record)
+
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self, employee=None):
+        '''
+            manager add new employee records
+        '''
+        token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, token)
+
+        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
+        kwargs.pop('token')
+        kwargs.pop('manager')
+        # kwargs = {}
+        # kwargs['user'] = self.get_argument('user')
+        # kwargs['name'] = self.get_argument('name')
+        # kwargs['gender'] = int(self.get_argument('gender', 0))
+        # kwargs['mobile'] = self.get_argument('mobile')
+        # kwargs['position'] = self.get_argument('position', '')
+        # kwargs['department'] = self.get_argument('department', '')
+
+        _id = account.add_ns_employee(**kwargs)
+        
+        logger.info('add new employee successfully(id:{}, mobile:{})'.format(_id, kwargs['mobile']))
+        self.render_json_response(id=_id, **OK)
+
+    @_trace_wrapper
+    @_parse_body
+    def put(self, employee):
+        '''
+            update employee's info
+        '''
+        token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, token)
+
+        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
+        kwargs.pop('token')
+        kwargs.pop('manager')
+
+        if kwargs:
+            account.update_ns_employee(employee, **kwargs)
+
+        logger.info('update {}\'s info: {}'.format(employee, kwargs))
+
+        self.render_json_response(**OK)
+
+    @_trace_wrapper
+    @_parse_body
+    def delete(self, employee):
+        '''
+            delete special employee by mobile
+        '''
+        token = self.get_argument('token')
+        manager = self.get_argument('manager')
+        self.check_token(manager, token)
+
+        mobile = self.get_argument('mobile')
+
+        account.delete_ns_employee(mobile) 
+
+        logger.info('delete employee : (id:{}, mobile:{})'.format(employee, mobile))
+
+        self.render_json_response(**OK)
+
+class NSBindHandler(BaseHandler):
+    '''
+        bind nansha employee's mobile with bd_account
+    '''
+    def check_token(self, user, token):
+        token, expired = token.split('|')
+        token2 = util.token2(user, expired)
+        if token != token2:
+            raise HTTPError(400, reason='abnormal token')
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        token = self.get_argument('token')
+        user = self.get_argument('user')
+        self.check_token(user, token)
+
+        token, expired = token.split('|')
+        token2 = util.token2(user, expired)
+        if token != token2:
+            raise HTTPError(400, reason='abnormal token')
+
+        mobile = self.get_argument('mobile')
+
+        account.bind_ns_employee(mobile, user)
+
+        self.render_json_response(**OK)
+
 
 _DEFAULT_BACKLOG = 128
 # These errnos indicate that a non-blocking operation must be retried

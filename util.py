@@ -20,11 +20,28 @@ DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 KEY = base64.b64encode(uuid.uuid5(uuid.NAMESPACE_X500, 'bidong wifi').hex)
 
-json_encoder = json.JSONEncoder(ensure_ascii=False).encode
-json_decoder = json.JSONDecoder().decode
-
 # _PASSWORD_ = '''23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ~!@#$^&*<>=+-_'''
 _PASSWORD_ = '''23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ'''
+
+_VERIFY_CODE_ = '1234567890'
+
+class My_JSONEncoder(json.JSONEncoder):
+    '''
+        serial datetime date
+    '''
+    def default(self, obj):
+        '''
+            serialize datetime & date
+        '''
+        if isinstance(obj, datetime.datetime):
+            return obj.strftime(DATE_FORMAT)
+        elif isinstance(obj, datetime.date):
+            return obj.strftime('%Y-%m-%d')
+        else:
+            return super(json.JSONEncoder, self).default(obj)
+
+json_encoder = My_JSONEncoder(ensure_ascii=False).encode
+json_decoder = json.JSONDecoder().decode
 
 def check_codes(method):
     '''
@@ -65,11 +82,17 @@ def sha1(*args):
     sha1.update(''.join(args))
     return sha1
 
-def generate_password(len=6):
+def generate_password(_len=6):
     '''
         Generate password randomly
     '''
-    return ''.join(random.sample(_PASSWORD_, len))
+    return ''.join(random.sample(_PASSWORD_, _len))
+
+def generate_verify_code(_len=6):
+    '''
+        generate verify code
+    '''
+    return ''.join(random.sample(_VERIFY_CODE_, _len))
 
 @check_codes
 def token(user):
