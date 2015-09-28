@@ -93,6 +93,22 @@ def create_group(name, note):
     except IntegrityError:
         raise HTTPError(409, reason='name has been existed')
 
+@util.check_codes
+def create_gmtype(group, _type):
+    try:
+        db.create_gmtype(group, _type)
+    except IntegrityError:
+        raise HTTPError(409, reason='name has been existed')
+
+def get_gmtype(group, _id):
+    return db.get_gmtype(group, _id)
+
+def get_gmtypes(group):
+    return db.get_gmtypes(group)
+
+def delete_gmtype(group, _id):
+    delete_gmtype(group, _id)
+
 # **************************************
 #
 # manager operator
@@ -166,10 +182,10 @@ def delete_message(_id):
 def get_message(_id):
     return db.get_message(_id)
 
-def get_messages(groups, mask, pos, nums):
+def get_messages(groups, mask, gmtype, pos, nums):
     '''
         get messages 
         filter  : groups, mask
         position: start , per
     '''
-    return db.get_messages(groups, mask, pos, nums)
+    return db.get_messages(groups, mask, gmtype, pos, nums)

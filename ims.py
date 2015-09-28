@@ -20,6 +20,8 @@ import tornado.httpclient
 import tornado.gen
 import tornado.httputil
 
+from tornado.log import app_log
+
 from tornado.options import define, options
 
 define('port', default=8280, help='running on the given port', type=int)
@@ -65,10 +67,6 @@ CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 # MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
 OK = {'Code':200, 'Msg':'OK'}
-
-def log(msg):
-    print('{}    {}'.format(util.now(), msg))
-
 
 class Application(tornado.web.Application):
     '''
@@ -162,7 +160,7 @@ class BaseHandler(tornado.web.RequestHandler):
             for (module_name, line_no, function_name, line) in tb.traceback:
                 print('File:{}, Line:{} in {}'.format(module_name, line_no, function_name))
                 print(line)
-            log('Render {} failed, {}:{}'.format(filename, tb.error.__class__.__name__, tb.error))
+            app_log.error('Render {} failed, {}:{}'.format(filename, tb.error.__class__.__name__, tb.error))
             raise HTTPError(500, 'Render page failed')
 
     def render(self, filename, **kwargs):
@@ -262,7 +260,7 @@ def _parse_body(method):
                             self.request.arguments, self.request.files)
                         break
                     else:
-                        logger.warning('Invalid multipart/form-data')
+                        app_log.error('Invalid multipart/form-data')
         return method(self, *args, **kwargs)
     return wrapper
 
@@ -311,10 +309,10 @@ class IMHandler(BaseHandler):
             cls._IM_DISPATER = imapi.APIClient(mas['db'], mas['user'], mas['password'], mas['code'])
         return cls._IM_DISPATER
 
-    @_trace_wrapper
-    @_parse_body
-    def get(self):
-        pass
+    # @_trace_wrapper
+    # @_parse_body
+    # def get(self):
+    #     pass
 
     @_trace_wrapper
     @_parse_body
@@ -409,7 +407,7 @@ def main():
     app = Application()
     app.listen(options.port, xheaders=app.settings.get('xheaders', False))
     io_loop = tornado.ioloop.IOLoop.instance()
-    logger.info('IMS Server Listening:{} Started'.format(options.port))
+    app_log.info('IMS Server Listening:{} Started'.format(options.port))
     io_loop.start()
 
 if __name__ == '__main__':

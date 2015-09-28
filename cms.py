@@ -64,6 +64,11 @@ json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 TEMPLATE_PATH = settings['cms_path']
+
+# if IMAGE_PATH not existed, mkdir it
+IMAGE_PATH = os.path.join(CURRENT_PATH, 'images')
+if not os.path.exists(IMAGE_PATH):
+    os.mkdir(IMAGE_PATH)
 # MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
 OK = {'Code':200, 'Msg':'OK'}
@@ -90,6 +95,7 @@ class Application(tornado.web.Application):
             # static resource handler
             (r'/(.*\.(?:css|jpg|png|js|ico|json))$', tornado.web.StaticFileHandler, 
              {'path':TEMPLATE_PATH}),
+            (r'/image/?(.*)$', ImageHandler),
             (r'/index.html', MainHandler),
             (r'/(.+\.html)', PageHandler),
             (r'/', MainHandler),
@@ -97,7 +103,7 @@ class Application(tornado.web.Application):
         settings = {
             'cookie_secret':util.sha1('bidong').hexdigest(), 
             'static_path':TEMPLATE_PATH,
-            # 'static_url_prefix':'resource/',
+            'static_url_prefix':'images/',
             'debug':False,
             'autoreload':True,
             'autoescape':'xhtml_escape',
@@ -524,6 +530,37 @@ class GroupsHandler(BaseHandler):
 
         self.render_json_response(Code=200, Msg='OK') 
 
+class GMTypeHandler(BaseHandler):
+    @_trace_wrapper
+    @_parse_body
+    @_check_token
+    def get(self, _id=''):
+        manager = self.get_argument('manager')
+        group = _check_groups_(manager)
+        if _id:
+            gmtype = manage.get_gmtype(group, _id)
+        else:
+            gmtypes = manage.get_gmtypes(group)
+
+    @_trace_wrapper
+    @_parse_body
+    @_check_token
+    def post(self, _id=''):
+        manager = self.get_argument('manager')
+        group = _check_groups_(manager)
+        name = self.get_argument('name')
+        manage.create_gmtype(group, name)
+        self.render_json_response(**OK)
+
+    @_trace_wrapper
+    @_parse_body
+    @_check_token
+    def delete(self, _id=''):
+        manager = self.get_argument('manager')
+        group = _check_groups_(manager)
+        manage.delete_gmtype(group, _id)
+        self.render_json_response(**OK)
+
 class AccountHandler(BaseHandler):
     '''
         manager account login
@@ -652,9 +689,10 @@ class MessageHandler(BaseHandler):
         page = int(self.get_argument('page', 0))
         nums = int(self.get_argument('per', 10))
         mask = int(self.get_argument('mask', 0))
+        gmtype = int(self.get_argument('gmtype', 0))
         pos = page*nums
 
-        messages = manage.get_messages(groups, mask, pos, nums)
+        messages = manage.get_messages(groups, mask, gmtype, pos, nums)
         isEnd = 1 if len(messages) < nums else 0
 
         self.render_json_response(Code=200, Msg='OK', messages=messages, end=isEnd)
@@ -698,6 +736,56 @@ class MessageHandler(BaseHandler):
     def delete(self, _id):
         manage.delete_message(_id)
         self.render_json_response(**OK)
+
+# @tornado.web.stream_request_body
+class ImageHandler(BaseHandler):
+    '''
+        1. user upload image & update databse
+    '''
+    # def initialize(self):
+    #     self.bytes_read = 0
+
+    # def data_received(self, data):
+    #     self.bytes_read += len(data)
+
+    def _gen_image_id_(self, *args):
+        now = util.now()
+
+        return util.md5(now, *args).hexdigest()
+
+    @_trace_wrapper
+    def get(self, _id):
+        filepath = os.path.join(IMAGE_PATH, _id)
+        with open(filepath, 'rb') as f:
+            data = f.read()
+        # self.set_header('Content-Type', record['ext'])
+            self.finish(data)
+
+    @_trace_wrapper
+    # @_parse_body
+    def post(self, _id=None):
+        '''
+            engineer uplaod image
+            update engineer's image
+        '''
+        # engineer = self.get_argument('engineer')
+        file_metas = self.request.files['uploadImg']
+        filename = _id
+        for meta in file_metas:
+            filename = meta['filename']
+            if not _id:
+                filename = self._gen_image_id_(filename, util.generate_password(8)) 
+            else:
+                filename = _id
+            filepath = os.path.join(IMAGE_PATH, filename)
+            with open(filepath, 'wb') as uf:
+                uf.write(meta['body'])
+            break
+
+        if filename:
+            self.render_json_response(name=filename, **OK)
+        else:
+            raise HTTPError(400)
     
 #***************************************************
 #

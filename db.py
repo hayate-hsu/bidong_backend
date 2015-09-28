@@ -150,6 +150,34 @@ class Store():
             results = cur.fetchall()
             return results if results else []
 
+    def create_gmtype(self, group, name):
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            sql = 'insert into gmtype (group, name) values({}, "{}")'.format(group, name)
+            cur.execute(sql)
+            conn.commit()
+
+    def get_gmtype(self, group, _id):
+        with Cursor(self.dbpool) as cur:
+            sql = 'select * from gmtype where id = {} and groups = {}'.format(_id, group)
+            cur.execute(sql)
+            return cur.fetchone()
+
+    def get_gmtypes(self, group):
+        with Cursor(self.dbpool) as cur:
+            sql = 'select * from gmtype where groups = {} order by id'.format(group)
+            cur.execute(sql)
+            results = cur.fetchall()
+            return results if results else []
+
+    def delete_gmtype(self, group, _id):
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            sql = 'delete from gmtype where id = {} and groups = {}'.format(_id, group)
+            cur.execute(sql)
+            conn.commit()
+
+
     # *********************************************
     #
     # group operator
@@ -271,7 +299,7 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
-    def get_messages(self, groups, mask, pos, nums=10):
+    def get_messages(self, groups, mask, gmtype, pos, nums=10):
         '''
             id title subtitle section mask author groups status ctime content image
             get groups's messages excelpt content filed
@@ -283,15 +311,17 @@ class Store():
         with Cursor(self.dbpool) as cur:
             filters = 'message.id, message.title, message.subtitle, message.mask, message.author, message.groups, message.status, message.ctime, message.image'
             sql = ''
+            gmtype = 'message.gmtype = {} and '.format(gmtype) if gmtype else ''
+
             if mask:
                 sql = '''select {}, section.name as section from message, section 
-                where groups = {} and mask & {} = {} and message.section = section.id 
-                order by ctime desc limit {},{}'''.format(filters, groups, __MASK__, mask, pos, nums)
+                where {}message.groups = {} and message.mask & {} = {} and message.section = section.id 
+                order by ctime desc limit {},{}'''.format(filters, gmtype, groups, __MASK__, mask, pos, nums)
             else:
                 # doesn't check message type
                 sql = '''select {}, section.name as section from message, section 
-                where message.groups = {} and message.section = section.id 
-                order by ctime desc limit {},{}'''.format(filters, groups, pos, nums)
+                where {}message.groups = {} and message.section = section.id 
+                order by ctime desc limit {},{}'''.format(filters, gmtype, groups, pos, nums)
 
             cur.execute(sql)
             results = cur.fetchall()
