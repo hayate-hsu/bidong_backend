@@ -55,7 +55,6 @@ import settings
 
 import account
 import _const
-import imapi
 
 json_encoder = util.json_encoder
 json_decoder = util.json_decoder
