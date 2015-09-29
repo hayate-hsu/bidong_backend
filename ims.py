@@ -306,7 +306,7 @@ class IMHandler(BaseHandler):
     @classmethod
     def __im__(cls):
         if not cls._IM_DISPATER:
-            cls._IM_DISPATER = imapi.APIClient(mas['db'], mas['user'], mas['password'], mas['code'])
+            cls._IM_DISPATER = imapi.APIClient(mas['ip'], mas['user'], mas['password'], mas['code'])
         return cls._IM_DISPATER
 
     # @_trace_wrapper
