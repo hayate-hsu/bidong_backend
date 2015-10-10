@@ -70,6 +70,7 @@ if not os.path.exists(TEMPLATE_PATH):
 
 # if IMAGE_PATH not existed, mkdir it
 UPLOAD_IMAGE_PATH = os.path.join(TEMPLATE_PATH, 'fu_images')
+UF_IMAGE_PREFIX = '/fu_images/'
 if not os.path.exists(UPLOAD_IMAGE_PATH):
     os.mkdir(UPLOAD_IMAGE_PATH)
 # MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
@@ -840,11 +841,15 @@ class ImageHandler(BaseHandler):
         '''
         # engineer = self.get_argument('engineer')
         file_metas = self.request.files['uploadImg']
-        filename = _id
+        filename, ext = _id, ''
         for meta in file_metas:
             filename = meta['filename']
+            content_type = meta['content_type']
+            if '.' in filename and filename[-1] != '.':
+                ext = filename.split('.')[-1]
             if not _id:
-                filename = self._gen_image_id_(filename, util.generate_password(8)) 
+                filename = self._gen_image_id_(filename, content_type, util.generate_password(8)) 
+                filename = '.'.join([filename, ext])
             else:
                 filename = _id
             filepath = os.path.join(UPLOAD_IMAGE_PATH, filename)
@@ -853,7 +858,7 @@ class ImageHandler(BaseHandler):
             break
 
         if filename:
-            self.render_json_response(name=filename, **OK)
+            self.render_json_response(name=UF_IMAGE_PREFIX+filename, **OK)
         else:
             raise HTTPError(400)
     

@@ -1223,19 +1223,20 @@ class MobileHandler(BaseHandler):
         mobile = self.get_argument('mobile')
         if self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
-        flags = self.get_argument('flags')
-        if flags == 1:
-            # check account is nansha employee account
-            record = account.get_ns_employee(mobile=mobile)
-            if not record:
-                raise HTTPError(403, reason='mobile is not nansha employee')
-                # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
+        flags = self.get_argument('flags', 0)
+        # if flags == 1:
+        #     # check account is nansha employee account
+        #     record = account.get_ns_employee(mobile=mobile)
+        #     if not record:
+        #         raise HTTPError(403, reason='mobile is not nansha employee')
+        #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         
         verify = util.generate_verify_code()
 
         # send verify code to special mobile
         data = json_encoder({'mobile':mobile, 'code':verify})
-        request = tornado.httpclient.HTTPRequest(self.__CLASS__.URL, method='POST', 
+        request = ''
+        request = tornado.httpclient.HTTPRequest(MobileHandler.URL, method='POST', 
                                                  headers={'Content-Type':'application/json'}, 
                                                  body=data)
         http_client = tornado.httpclient.AsyncHTTPClient() 
