@@ -780,9 +780,6 @@ class UeditorHandler(BaseHandler):
     @_trace_wrapper
     @_parse_body
     def post(self):
-        logger.info(self.request)
-        logger.info(self.request.arguments)
-        print(self.request.files)
         file_metas = self.request.files['upfile']
         filename, ext = '', '' 
         for meta in file_metas:
@@ -794,16 +791,18 @@ class UeditorHandler(BaseHandler):
             mask = util.generate_password(8)
             md5 = util.md5(filename, content_type, now, mask)
             filename = md5.hexdigest()
+            if ext:
+                filename = '.'.join([filename, ext])
 
             filepath = os.path.join([UEDITOR_IMAGE_PATH, filename])
-            filepath = '.'.join([filepath, ext])
+            # filepath = '.'.join([filepath, ext])
             with open(filepath, 'wb') as uf:
                 uf.write(meta['body'])
             # only support signle file upload
             break
         if filename:
             url = UE_IMAGE_PREFIX + filename
-            url = '.'.join([url, ext])
+            # url = '.'.join([url, ext])
             self.render_json_response(url=url, state='SUCCESS', **OK)
         else:
             raise HTTPError(400)
@@ -849,7 +848,8 @@ class ImageHandler(BaseHandler):
                 ext = filename.split('.')[-1]
             if not _id:
                 filename = self._gen_image_id_(filename, content_type, util.generate_password(8)) 
-                filename = '.'.join([filename, ext])
+                if ext:
+                    filename = '.'.join([filename, ext])
             else:
                 filename = _id
             filepath = os.path.join(UPLOAD_IMAGE_PATH, filename)
