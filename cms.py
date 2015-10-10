@@ -75,7 +75,7 @@ if not os.path.exists(UPLOAD_IMAGE_PATH):
     os.mkdir(UPLOAD_IMAGE_PATH)
 # MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
-UEDITOR_IMAGE_PATH = os.path.join(TEMPLATE_PATH, 'ue_image')
+UEDITOR_IMAGE_PATH = os.path.join(TEMPLATE_PATH, 'ue_images')
 UE_IMAGE_PREFIX = '/ue_images/'
 
 OK = {'Code':200, 'Msg':'OK'}
@@ -795,7 +795,7 @@ class UeditorHandler(BaseHandler):
             md5 = util.md5(filename, content_type, now, mask)
             filename = md5.hexdigest()
 
-            filepath = UEDITOR_IMAGE_PATH + filename
+            filepath = os.path.join([UEDITOR_IMAGE_PATH, filename])
             filepath = '.'.join([filepath, ext])
             with open(filepath, 'wb') as uf:
                 uf.write(meta['body'])
