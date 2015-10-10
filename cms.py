@@ -794,7 +794,7 @@ class UeditorHandler(BaseHandler):
             if ext:
                 filename = '.'.join([filename, ext])
 
-            filepath = os.path.join([UEDITOR_IMAGE_PATH, filename])
+            filepath = os.path.join(UEDITOR_IMAGE_PATH, filename)
             # filepath = '.'.join([filepath, ext])
             with open(filepath, 'wb') as uf:
                 uf.write(meta['body'])
