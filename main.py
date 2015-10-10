@@ -1210,7 +1210,7 @@ class MobileHandler(BaseHandler):
         verify mobile and send verify code
     '''
     MOBILE_PATTERN = re.compile(r'^(13[0-9]|14[57]|15[0-35-9]|17[678]18[0-9]\d{8}$)')
-    URL = ''
+    URL = 'http://14.23.171.10/'
 
     @tornado.gen.coroutine
     @_trace_wrapper
@@ -1228,13 +1228,20 @@ class MobileHandler(BaseHandler):
             # check account is nansha employee account
             record = account.get_ns_employee(mobile=mobile)
             if not record:
-                return self.render_json_response(Code=403, Msg='mobile not nansha employee')
+                raise HTTPError(403, reason='mobile is not nansha employee')
+                # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         
         verify = util.generate_verify_code()
-        # call message gateway 
-        # send_message(mobile, util.generate_verify_code()) 
-        # http_client = AsyncHTTPClient() 
-        # response = yield http_client.fetch(self.URL)
+
+        # send verify code to special mobile
+        data = json_encoder({'mobile':mobile, 'code':verify})
+        request = tornado.httpclient.HTTPRequest(self.__CLASS__.URL, method='POST', 
+                                                 headers={'Content-Type':'application/json'}, 
+                                                 body=data)
+        http_client = tornado.httpclient.AsyncHTTPClient() 
+        response = yield http_client.fetch(request)
+        if response.code != 200:
+            raise response.error
         self.render_json_response(verify=verify, **OK)
 
     def check_mobile(self, mobile):

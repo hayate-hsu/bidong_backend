@@ -25,17 +25,6 @@ ctime datetime not null default current_timestamp,
 primary key (user));
 '''
 
-# create ns_notice
-ns_notice_sql = '''
-create table if not exists ns_notice (id int(11) unsigned not null auto_increment,
-caption varchar(128) not null default '',
-summary varchar(256) not null default '',
-mask tinyint(1) not null default 0,
-ctime datetime not null default current_timestamp,
-primary key (id))
-auto_increment = 1000;
-'''
-
 # create section table, news type
 section_sql = '''
 create table if not exists section (

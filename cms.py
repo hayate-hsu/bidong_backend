@@ -27,25 +27,25 @@ define('port', default=8180, help='running on the given port', type=int)
 import errno
 import os
 import sys
-import re
+# import re
 
 # import struct
 # import hashlib
 import socket
 # import collections
 import functools
-import time
-import datetime
+# import time
+# import datetime
 
 import logging
 
-import xml.etree.ElementTree as ET
+# import xml.etree.ElementTree as ET
 
 # Mako template
 import mako.lookup
 import mako.template
 
-from MySQLdb import (IntegrityError)
+# from MySQLdb import (IntegrityError)
 
 import user_agents
 
@@ -58,18 +58,24 @@ _now = util.now
 import settings
 
 import manage
+import ueditor_config
 
 json_encoder = util.json_encoder
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 TEMPLATE_PATH = settings['cms_path']
+if not os.path.exists(TEMPLATE_PATH):
+    os.mkdir(TEMPLATE_PATH)
 
 # if IMAGE_PATH not existed, mkdir it
-IMAGE_PATH = os.path.join(CURRENT_PATH, 'images')
-if not os.path.exists(IMAGE_PATH):
-    os.mkdir(IMAGE_PATH)
+UPLOAD_IMAGE_PATH = os.path.join(TEMPLATE_PATH, 'fu_images')
+if not os.path.exists(UPLOAD_IMAGE_PATH):
+    os.mkdir(UPLOAD_IMAGE_PATH)
 # MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
+
+UEDITOR_IMAGE_PATH = os.path.join(TEMPLATE_PATH, 'ue_image')
+UE_IMAGE_PREFIX = '/ue_images/'
 
 OK = {'Code':200, 'Msg':'OK'}
 
@@ -92,8 +98,12 @@ class Application(tornado.web.Application):
             (r'/message/section/?(.*)$', SectionHandler),
             (r'/message/?(.*)$', MessageHandler),
 
+            # 
+            (r'/ue$', UeditorHandler),
+
             # static resource handler
-            (r'/(.*\.(?:css|jpg|png|js|ico|json))$', tornado.web.StaticFileHandler, 
+            # add support for php
+            (r'/(.*\.(?:css|jpg|png|js|ico|json|php|gif|swf))$', tornado.web.StaticFileHandler, 
              {'path':TEMPLATE_PATH}),
             (r'/image/?(.*)$', ImageHandler),
             (r'/index.html', MainHandler),
@@ -137,6 +147,12 @@ class BaseHandler(tornado.web.RequestHandler):
         '''
         '''
         pass
+
+    # def on_finish(self):
+    #     '''
+    #         allow other sites access this site 
+    #     '''
+    #     self.set_header('Access-Control-Allow-Origin', '*')
 
     def get_arguments(self, name, strip=True):
         assert isinstance(strip, bool)
@@ -231,6 +247,7 @@ class BaseHandler(tornado.web.RequestHandler):
             Encode dict and return response to client
         '''
         # self.set_header('Access-Control-Allow-Origin', '*')
+        self.set_header('Access-Control-Allow-Origin', 'http://gw.bidongwifi.com')
         callback = self.get_argument('callback', None)
         # check should return jsonp
         if callback:
@@ -414,11 +431,22 @@ class PageHandler(BaseHandler):
             Render html page
         '''
         page = page.lower()
+        # logger.info('argument:{}'.format(self.request.arguments))
         # if not page.endswith('.html'):
         #     page = page + '.html'
         # if page.startswith('manager.html'):
         #     return self.render('login_admin.html')        
-        return self.render(page)
+        manager = self.get_argument('manager', '')
+        if manager:
+            # manager get it's messages
+            token = self.get_argument('token')
+            token, expired = token.split('|')
+            token2 = util.token2(manager, expired)
+            if token != token2:
+                raise HTTPError(400, reason='Abnormal token')
+            self.render(page, groups=_check_groups_(manager))
+        else:
+            return self.render(page)
 
 class ManagerHandler(BaseHandler):
     '''
@@ -578,7 +606,6 @@ class AccountHandler(BaseHandler):
         password = self.get_argument('password')
 
         _user = manage.get_manager(user)
-        print(user, _user)
         if not _user:
             raise HTTPError(404, reason='can\'t found account')
         if password != _user['password']:
@@ -666,6 +693,7 @@ class MessageHandler(BaseHandler):
         '''
             get message
         '''
+        logger.info('id: {}, {}'.format(_id, self.request))
         if _id:
             message = manage.get_message(_id)
             if not message:
@@ -737,6 +765,48 @@ class MessageHandler(BaseHandler):
         manage.delete_message(_id)
         self.render_json_response(**OK)
 
+class UeditorHandler(BaseHandler):
+    '''
+        support for ueditor upload images
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def get(self):
+        logger.info(self.request)
+        self.set_header('Content-Type', 'application/json')
+        self.finish(json_encoder(ueditor_config.config))
+
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        logger.info(self.request)
+        logger.info(self.request.arguments)
+        print(self.request.files)
+        file_metas = self.request.files['upfile']
+        filename, ext = '', '' 
+        for meta in file_metas:
+            filename = meta['filename']
+            if '.' in filename and filename[-1] != '.':
+                ext = filename.split('.')[-1]
+            content_type = meta['content_type']
+            now = _now()
+            mask = util.generate_password(8)
+            md5 = util.md5(filename, content_type, now, mask)
+            filename = md5.hexdigest()
+
+            filepath = UEDITOR_IMAGE_PATH + filename
+            filepath = '.'.join([filepath, ext])
+            with open(filepath, 'wb') as uf:
+                uf.write(meta['body'])
+            # only support signle file upload
+            break
+        if filename:
+            url = UE_IMAGE_PREFIX + filename
+            url = '.'.join([url, ext])
+            self.render_json_response(url=url, state='SUCCESS', **OK)
+        else:
+            raise HTTPError(400)
+
 # @tornado.web.stream_request_body
 class ImageHandler(BaseHandler):
     '''
@@ -755,10 +825,10 @@ class ImageHandler(BaseHandler):
 
     @_trace_wrapper
     def get(self, _id):
-        filepath = os.path.join(IMAGE_PATH, _id)
+        filepath = os.path.join(UPLOAD_IMAGE_PATH, _id)
+        logger.info('id:{}, filepath:{}'.format(_id, filepath))
         with open(filepath, 'rb') as f:
             data = f.read()
-        # self.set_header('Content-Type', record['ext'])
             self.finish(data)
 
     @_trace_wrapper
@@ -777,7 +847,7 @@ class ImageHandler(BaseHandler):
                 filename = self._gen_image_id_(filename, util.generate_password(8)) 
             else:
                 filename = _id
-            filepath = os.path.join(IMAGE_PATH, filename)
+            filepath = os.path.join(UPLOAD_IMAGE_PATH, filename)
             with open(filepath, 'wb') as uf:
                 uf.write(meta['body'])
             break
@@ -787,228 +857,6 @@ class ImageHandler(BaseHandler):
         else:
             raise HTTPError(400)
     
-#***************************************************
-#
-#   
-#     Nansha city handler
-#
-#
-#****************************************************
-class NSNoticeHandler(BaseHandler):
-    '''
-        App get notices
-        Manager add new record 
-    '''
-    PER = 10
-
-    def check_token(self, user, token):
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-    @_trace_wrapper
-    @_parse_body
-    def get(self, _id=''):
-        '''
-            get notices & special notice
-        '''
-        accept = self.request.headers.get('Accept', 'text/html')
-        if _id:
-            # get special notice
-            notice = account.get_notice(_id)
-            if not notice:
-                raise HTTPError(404, reason='Can\'t found notice:{}'.format(_id))
-            if accept.startswith('application/json'):
-                return self.render_json_response(Code=200, Msg='OK', **notice)
-            else:
-                return self.render('nansha/{}.html'.format(_id), **notice)
-        else:
-            # get notices
-            # item: id, datetime, caption, 
-            page = self.get_argument('page', 0)
-            notices = account.get_notices(page)
-            isEnd = 0
-            if len(notices) < self.PER:
-                isEnd = 1
-            return self.render_json_response(notices=notices, isEnd=isEnd, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self, _id=None):
-        '''
-            add new notice
-        '''
-        m_token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, m_token)
-
-        caption = self.get_argument('caption')
-        summary = self.get_argument('summary')
-        mask = int(self.get_argument('mask', 0))
-
-        _id = account.publish_notice(caption=caption, summary=summary, mask=mask)
-
-        logger.info('publish new notice: id:{}, mask:{}'.format(_id, mask))
-
-        self.render_json_response(id=_id, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def put(self, _id):
-        '''
-            update existed notice
-        '''
-        m_token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, m_token)
-
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        account.update_notice(_id, **kwargs)
-
-        self.render_json_response(id=_id, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def delete(self, _id):
-        '''
-            update existed notice
-        '''
-        m_token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, m_token)
-
-        account.remove_notice(_id)
-
-        self.render_json_response(id=_id, **OK)
-
-class NSAccountHandler(BaseHandler):
-    '''
-        manager edit employee's details
-    '''
-    def check_token(self, user, token):
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-    @_trace_wrapper
-    @_parse_body
-    def get(self, employee=None):
-        '''
-            return special employee
-            can be searched by id & mobile
-        '''
-        kwargs = {}
-        if employee:
-            kwargs['id'] = employee
-        else:
-            kwargs['mobile'] = self.get_argument('mobile')
-        if not kwargs:
-            raise HTTPError(400)
-        record = account.get_ns_employee(**kwargs)
-        if not record:
-            raise HTTPError(404)
-
-        self.render_json_response(Code=200, Msg='OK', **record)
-
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self, employee=None):
-        '''
-            manager add new employee records
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-        # kwargs = {}
-        # kwargs['user'] = self.get_argument('user')
-        # kwargs['name'] = self.get_argument('name')
-        # kwargs['gender'] = int(self.get_argument('gender', 0))
-        # kwargs['mobile'] = self.get_argument('mobile')
-        # kwargs['position'] = self.get_argument('position', '')
-        # kwargs['department'] = self.get_argument('department', '')
-
-        _id = account.add_ns_employee(**kwargs)
-        
-        logger.info('add new employee successfully(id:{}, mobile:{})'.format(_id, kwargs['mobile']))
-        self.render_json_response(id=_id, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def put(self, employee):
-        '''
-            update employee's info
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        if kwargs:
-            account.update_ns_employee(employee, **kwargs)
-
-        logger.info('update {}\'s info: {}'.format(employee, kwargs))
-
-        self.render_json_response(**OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def delete(self, employee):
-        '''
-            delete special employee by mobile
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
-        mobile = self.get_argument('mobile')
-
-        account.delete_ns_employee(mobile) 
-
-        logger.info('delete employee : (id:{}, mobile:{})'.format(employee, mobile))
-
-        self.render_json_response(**OK)
-
-class NSBindHandler(BaseHandler):
-    '''
-        bind nansha employee's mobile with bd_account
-    '''
-    def check_token(self, user, token):
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self):
-        token = self.get_argument('token')
-        user = self.get_argument('user')
-        self.check_token(user, token)
-
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-        mobile = self.get_argument('mobile')
-
-        account.bind_ns_employee(mobile, user)
-
-        self.render_json_response(**OK)
-
 _DEFAULT_BACKLOG = 128
 # These errnos indicate that a non-blocking operation must be retried
 # at a later time. On most paltforms they're the same value, but on 
@@ -1033,10 +881,10 @@ def bind_udp_socket(port, address=None, family=socket.AF_UNSPEC, backlog=_DEFAUL
         try:
             sock = socket.socket(af, socktype, proto)
         except socket.error as e:
-            if errno_from_exception(e) == errno.EAFNOSUPPORT:
+            if tornado.util.errno_from_exception(e) == errno.EAFNOSUPPORT:
                 continue
             raise
-        set_close_exec(sock.fileno())
+        tornado.netutil.set_close_exec(sock.fileno())
         if os.name != 'nt':
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if af == socket.AF_INET6:
@@ -1060,7 +908,7 @@ def add_udp_handler(sock, servers, io_loop=None):
     '''
     if io_loop is None:
         io_loop = tornado.ioloop.IOLoop.current()
-    def udp_hander(fd, events):
+    def udp_handler(fd, events):
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
@@ -1068,7 +916,7 @@ def add_udp_handler(sock, servers, io_loop=None):
                     # ac data arrived, deal with
                     pass
             except socket.error as e:
-                if errno_from_exception(e) in _ERRNO_WOULDBLOCK:
+                if tornado.util.errno_from_exception(e) in _ERRNO_WOULDBLOCK:
                     # _ERRNO_WOULDBLOCK indicate we have accepted every
                     # connection that is avaiable
                     return

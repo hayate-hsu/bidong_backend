@@ -79,12 +79,12 @@ class Application(tornado.web.Application):
         ]
         settings = {
             'cookie_secret':util.sha1('ims').hexdigest(), 
-            'static_path':CURRENT_PATH,
+            # 'static_path':CURRENT_PATH,
             # 'static_url_prefix':'resource/',
             'debug':False,
             'autoreload':True,
             'autoescape':'xhtml_escape',
-            'i18n_path':os.path.join(CURRENT_PATH, 'resource/i18n'),
+            # 'i18n_path':os.path.join(CURRENT_PATH, 'resource/i18n'),
             # 'login_url':'',
             'xheaders':True,    # use headers like X-Real-IP to get the user's IP address instead of
                                 # attributeing all traffic to the balancer's IP address.
@@ -351,10 +351,10 @@ def bind_udp_socket(port, address=None, family=socket.AF_UNSPEC, backlog=_DEFAUL
         try:
             sock = socket.socket(af, socktype, proto)
         except socket.error as e:
-            if errno_from_exception(e) == errno.EAFNOSUPPORT:
+            if tornado.util.errno_from_exception(e) == errno.EAFNOSUPPORT:
                 continue
             raise
-        set_close_exec(sock.fileno())
+        tornado.netutil.set_close_exec(sock.fileno())
         if os.name != 'nt':
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if af == socket.AF_INET6:
@@ -378,7 +378,7 @@ def add_udp_handler(sock, servers, io_loop=None):
     '''
     if io_loop is None:
         io_loop = tornado.ioloop.IOLoop.current()
-    def udp_hander(fd, events):
+    def udp_handler(fd, events):
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
@@ -386,7 +386,7 @@ def add_udp_handler(sock, servers, io_loop=None):
                     # ac data arrived, deal with
                     pass
             except socket.error as e:
-                if errno_from_exception(e) in _ERRNO_WOULDBLOCK:
+                if tornado.util.errno_from_exception(e) in _ERRNO_WOULDBLOCK:
                     # _ERRNO_WOULDBLOCK indicate we have accepted every
                     # connection that is avaiable
                     return

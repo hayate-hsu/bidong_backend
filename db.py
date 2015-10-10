@@ -738,6 +738,7 @@ class Store():
             sql = 'select id from account where {} = "{}"'.format(column, user)
             cur.execute(sql)
             user = cur.fetchone()
+            print(user)
             #
             # mask = mask + 2**9
             coin = 60
