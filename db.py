@@ -1163,7 +1163,11 @@ class Store():
             values = ', '.join(['"{}"'.format(item) for item in kwargs.values()])
             sql = 'insert into ns_employee ({}) values({})'.format(keys, values)
             cur.execute(sql)
+            sql = 'select id from ns_employee where mobile = {}'.format(kwargs['mobile'])
+            cur.execute(sql)
+            _id = cur.fetchone()['id']
             conn.commit()
+            return _id
 
     def update_ns_employee(self, _id, **kwargs):
         with Connect(self.dbpool) as conn:

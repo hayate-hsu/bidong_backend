@@ -1232,6 +1232,8 @@ class MobileHandler(BaseHandler):
         #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         
         verify = util.generate_verify_code()
+        self.render_json_response(verify=verify, **OK)
+        self.finish()
 
         # send verify code to special mobile
         data = json_encoder({'mobile':mobile, 'code':verify})
@@ -1243,7 +1245,6 @@ class MobileHandler(BaseHandler):
         response = yield http_client.fetch(request)
         if response.code != 200:
             raise response.error
-        self.render_json_response(verify=verify, **OK)
 
     def check_mobile(self, mobile):
         return True if re.match(self.MOBILE_PATTERN, mobile) else False
@@ -1438,11 +1439,11 @@ class NSManagerHandler(BaseHandler):
         '''
         manager = self.get_argument('manager')
         password = self.get_argument('password')
-        manager = account.get_manager(manager, mask=1<<2)
+        manager = account.get_manager(manager)
         if not manager:
             raise HTTPError('404', reason='manager account can\'t found')
         pw_md5 = util.md5(manager['password']).hexdigest()
-        if password != pw_md5:
+        if password not in (pw_md5, manager['password']):
             raise HTTPError('401', reason='wrong password')
 
         # user & password passed
@@ -1490,6 +1491,8 @@ class NSAccountHandler(BaseHandler):
         token = self.get_argument('token')
         manager = self.get_argument('manager')
         self.check_token(manager, token)
+
+        logger.info(self.request.arguments)
 
         kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
         kwargs.pop('token')

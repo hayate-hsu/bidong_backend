@@ -397,6 +397,9 @@ def get_ns_employee(**kwargs):
     '''
     return db.get_ns_employee(**kwargs)
 
+def get_ns_employees(pos, nums):
+    pass
+
 @util.check_codes
 def add_ns_employee(**kwargs):
     '''

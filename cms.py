@@ -248,7 +248,7 @@ class BaseHandler(tornado.web.RequestHandler):
             Encode dict and return response to client
         '''
         # self.set_header('Access-Control-Allow-Origin', '*')
-        self.set_header('Access-Control-Allow-Origin', 'http://gw.bidongwifi.com')
+        self.set_header('Access-Control-Allow-Origin', 'http://gw.bidongwifi.com,http://t.cniotroot.cn')
         callback = self.get_argument('callback', None)
         # check should return jsonp
         if callback:
@@ -773,7 +773,6 @@ class UeditorHandler(BaseHandler):
     @_trace_wrapper
     @_parse_body
     def get(self):
-        logger.info(self.request)
         self.set_header('Content-Type', 'application/json')
         self.finish(json_encoder(ueditor_config.config))
 
