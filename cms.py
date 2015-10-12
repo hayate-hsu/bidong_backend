@@ -248,8 +248,9 @@ class BaseHandler(tornado.web.RequestHandler):
             Encode dict and return response to client
         '''
         # self.set_header('Access-Control-Allow-Origin', '*')
-        if self.request.host in settings['sites']:
-            self.set_header('Access-Control-Allow-Origin', '{}://{}'.format(self.request.protocol, self.request.host))
+        referer = self.request.headers.get('Referer', '')
+        if referer and referer.lower() in settings['sites']:
+            self.set_header('Access-Control-Allow-Origin', referer.rstript('/'))
         callback = self.get_argument('callback', None)
         # check should return jsonp
         if callback:
