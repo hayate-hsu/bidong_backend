@@ -1209,11 +1209,11 @@ class MobileHandler(BaseHandler):
     '''
         verify mobile and send verify code
     '''
-    MOBILE_PATTERN = re.compile(r'^(13[0-9]|14[57]|15[0-35-9]|17[678]18[0-9]\d{8}$)')
+    MOBILE_PATTERN = re.compile(r'^(?:13[0-9]|14[57]|15[0-35-9]|17[678]|18[0-9])\d{8}$')
     URL = 'http://14.23.171.10/'
 
-    @tornado.gen.coroutine
     @_trace_wrapper
+    @tornado.gen.coroutine
     @_parse_body
     def post(self):
         '''
@@ -1221,7 +1221,7 @@ class MobileHandler(BaseHandler):
             client check mobile number
         '''
         mobile = self.get_argument('mobile')
-        if self.check_mobile(mobile):
+        if not self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
         flags = self.get_argument('flags', 0)
         # if flags == 1:
@@ -1233,7 +1233,6 @@ class MobileHandler(BaseHandler):
         
         verify = util.generate_verify_code()
         self.render_json_response(verify=verify, **OK)
-        self.finish()
 
         # send verify code to special mobile
         data = json_encoder({'mobile':mobile, 'code':verify})
@@ -1247,7 +1246,7 @@ class MobileHandler(BaseHandler):
             raise response.error
 
     def check_mobile(self, mobile):
-        return True if re.match(self.MOBILE_PATTERN, mobile) else False
+        return True if re.match(MobileHandler.MOBILE_PATTERN, mobile) else False
 
 class VersionHandler(BaseHandler):
     '''
