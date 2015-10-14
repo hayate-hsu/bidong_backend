@@ -299,7 +299,7 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
-    def get_messages(self, groups, mask, gmtype, pos, nums=10):
+    def get_messages(self, groups, mask, isimg, gmtype, pos, nums=10):
         '''
             id title subtitle section mask author groups status ctime content image
             get groups's messages excelpt content filed
@@ -307,21 +307,25 @@ class Store():
             groups : message's group
             mask : message type (combine by bit operator)
             pos : where to get special messages
+            isimg : search messages which image <> '';
         '''
         with Cursor(self.dbpool) as cur:
             filters = 'message.id, message.title, message.subtitle, message.mask, message.author, message.groups, message.status, message.ctime, message.image'
             sql = ''
             gmtype = 'message.gmtype = {} and '.format(gmtype) if gmtype else ''
+            isimg = 'message.image <> "" and '.format(isimg) if isimg else ''
 
             if mask:
                 sql = '''select {}, section.name as section from message, section 
-                where {}message.groups = {} and message.mask & {} = {} and message.section = section.id 
-                order by ctime desc limit {},{}'''.format(filters, gmtype, groups, __MASK__, mask, pos, nums)
+                where {}{}message.groups = {} and message.mask & {} = {} and 
+                message.section = section.id order by ctime desc limit {},{}
+                '''.format(filters, gmtype, isimg, groups, __MASK__, mask, pos, nums)
             else:
                 # doesn't check message type
                 sql = '''select {}, section.name as section from message, section 
-                where {}message.groups = {} and message.section = section.id 
-                order by ctime desc limit {},{}'''.format(filters, gmtype, groups, pos, nums)
+                where {}{}message.groups = {} and message.section = section.id 
+                order by ctime desc limit {},{}
+                '''.format(filters, gmtype, isimg, groups, pos, nums)
 
             cur.execute(sql)
             results = cur.fetchall()

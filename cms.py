@@ -696,7 +696,7 @@ class MessageHandler(BaseHandler):
         '''
             get message
         '''
-        logger.info('id: {}, {}'.format(_id, self.request))
+        # logger.info('id: {}, {}'.format(_id, self.request))
         if _id:
             message = manage.get_message(_id)
             if not message:
@@ -721,9 +721,10 @@ class MessageHandler(BaseHandler):
         nums = int(self.get_argument('per', 10))
         mask = int(self.get_argument('mask', 0))
         gmtype = int(self.get_argument('gmtype', 0))
+        isimg = int(self.get_argument('isimg', 0))
         pos = page*nums
 
-        messages = manage.get_messages(groups, mask, gmtype, pos, nums)
+        messages = manage.get_messages(groups, mask, isimg, gmtype, pos, nums)
         isEnd = 1 if len(messages) < nums else 0
 
         self.render_json_response(Code=200, Msg='OK', messages=messages, end=isEnd)

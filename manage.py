@@ -182,10 +182,10 @@ def delete_message(_id):
 def get_message(_id):
     return db.get_message(_id)
 
-def get_messages(groups, mask, gmtype, pos, nums):
+def get_messages(groups, mask, isimg, gmtype, pos, nums):
     '''
         get messages 
         filter  : groups, mask
         position: start , per
     '''
-    return db.get_messages(groups, mask, gmtype, pos, nums)
+    return db.get_messages(groups, mask, isimg, gmtype, pos, nums)
