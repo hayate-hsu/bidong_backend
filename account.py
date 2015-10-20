@@ -192,7 +192,7 @@ def remove_holder_room(holder, rooms):
     db.remove_holder_room(holder, rooms)
 
 def get_renters(holder):
-    account = get_account(holder) 
+    account = get_account(id=holder) 
     results = db.get_holder_renters(holder)    
     bd_account, renters = {}, []
     for item in results:

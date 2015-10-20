@@ -317,6 +317,10 @@ def _trace_wrapper(method):
     def wrapper(self, *args, **kwargs):
         try:
             logger.info('<-- In %s: <%s> -->', self.__class__.__name__, self.request.method)
+            # result =  method(self, *args, **kwargs)
+            # logger.info('Result: {}'.format(result))
+            # print(dir(result))
+            # return result
             return method(self, *args, **kwargs)
         except HTTPError:
             logger.error('HTTPError catch', exc_info=True)
@@ -1224,12 +1228,12 @@ class MobileHandler(BaseHandler):
         if not self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
         flags = self.get_argument('flags', 0)
-        # if flags == 1:
-        #     # check account is nansha employee account
-        #     record = account.get_ns_employee(mobile=mobile)
-        #     if not record:
-        #         raise HTTPError(403, reason='mobile is not nansha employee')
-        #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
+        if flags == 1:
+            # check account is nansha employee account
+            record = account.get_ns_employee(mobile=mobile)
+            if not record:
+                raise HTTPError(403, reason='mobile is not nansha employee')
+                # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         
         verify = util.generate_verify_code()
         self.render_json_response(verify=verify, **OK)

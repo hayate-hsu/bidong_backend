@@ -72,3 +72,20 @@ newest varchar(12) not null default '',
 least varchar(12) not null default '',
 primary key (pt))
 '''
+
+# nansha employee table
+ns_employee = '''
+create table if not exists ns_employee (
+id int(11) unsigned not null auto_increment,
+name varchar(32) not null default '',
+gender tinyint(1) not null default 0,
+mobile varchar(17) not null default '',
+phone varchar(17) not null default '',
+position varchar(32) not null default '',
+department varchar(32) not null default '',
+ctime datetime not null default current_timestamp,
+mtime datetime not null default current_timestamp,
+primary key (id), 
+unique index idx_ns_employee_mobile (mobile))
+auto_increment = 1000;
+'''

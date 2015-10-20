@@ -319,9 +319,11 @@ class IMHandler(BaseHandler):
     def post(self):
         mobile = self.get_argument('mobile')
         code = self.get_argument('code')
+        im = self.__im__()
         try:
-            self.__im__().send_sm(mobile, _const['msg_template'].format(code))
+            im.send_sm(mobile, _const['msg_template'].format(code))
         except:
+            app_log.info('im: {}, {}'.format(im, dir(im))) 
             traceback.print_exc()
             self.render_json_response(Code=400, Msg='Send message failed')
         else:
