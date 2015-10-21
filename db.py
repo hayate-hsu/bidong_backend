@@ -318,13 +318,13 @@ class Store():
             if mask:
                 sql = '''select {}, section.name as section from message, section 
                 where {}{}message.groups = {} and message.mask & {} = {} and 
-                message.section = section.id order by ctime desc limit {},{}
+                message.section = section.id order by message.status desc, message.ctime desc limit {},{}
                 '''.format(filters, gmtype, isimg, groups, __MASK__, mask, pos, nums)
             else:
                 # doesn't check message type
                 sql = '''select {}, section.name as section from message, section 
                 where {}{}message.groups = {} and message.section = section.id 
-                order by ctime desc limit {},{}
+                order by message.status desc, message.ctime desc limit {},{}
                 '''.format(filters, gmtype, isimg, groups, pos, nums)
 
             cur.execute(sql)
