@@ -1306,18 +1306,9 @@ class VersionHandler(BaseHandler):
             return: the newest version, the least avaiable version
         '''
         ver = [int(item) for item in ver.split('.')]
-        # pt = ''
-        # if mask>>6 & 1:
-        #     pt = 'Android'
-        # elif mask>>7 & 1:
-        #     pt = 'IOS'
-        # else:
-        #     raise HTTPError(400, reason='Unknown platform')
-        # record = db.get_app_version(pt)
         least = [int(item) for item in record['least'].split('.')]
         newest = [int(item) for item in record['newest'].split('.')]
-        print(ver, least, newest)
-        return ver==newest, ver>=least
+        return ver>=newest, ver>=least
 
 #***************************************************
 #
