@@ -70,6 +70,7 @@ app_ver_sql = '''
 create table if not exists app_ver_sql (pt varchar(24) not null default '',
 newest varchar(12) not null default '',
 least varchar(12) not null default '',
+note varchar(256) not null default '',
 primary key (pt))
 '''
 

@@ -91,6 +91,9 @@ class Application(tornado.web.Application):
             # register account
             (r'/register', RegisterHandler),
 
+            # check version
+            (r'/version', VersionHandler),
+
             # get mobile verify code
             (r'/mobile$', MobileHandler),
             (r'/ns/bind$', NSBindHandler),
@@ -1264,11 +1267,13 @@ class VersionHandler(BaseHandler):
             return version record (contain mask)
         '''
         mask = int(self.get_argument('mask'))
-        ver = self.get_argument('ver', '')
+        ver = self.get_argument('version', '')
         record = account.get_version(mask)
+        if not record:
+            raise HTTPError(400)
         if ver:
-            newest, least = account.check_version(ver, mask)
-            record[mask] = 1 if newest else 0 + 2 if least else 0
+            newest, least = self.check_version(ver, record)
+            record['mask'] = (1 if newest else 0) + (2 if least else 0)
 
         self.render_json_response(Code=200, Msg='OK', **record)
 
@@ -1276,7 +1281,7 @@ class VersionHandler(BaseHandler):
     @_parse_body
     def post(self):
         mask = int(self.get_argument('mask'))
-        ver = self.get_argument('ver')
+        ver = self.get_argument('version')
 
         account.create_version(ver, mask)
         self.render_json_response(Code=200, Msg='OK')
@@ -1295,6 +1300,24 @@ class VersionHandler(BaseHandler):
             account.update_version(mask, **kwargs)
 
         self.render_json_response(**OK)
+
+    def check_version(self, ver, record):
+        '''
+            return: the newest version, the least avaiable version
+        '''
+        ver = [int(item) for item in ver.split('.')]
+        # pt = ''
+        # if mask>>6 & 1:
+        #     pt = 'Android'
+        # elif mask>>7 & 1:
+        #     pt = 'IOS'
+        # else:
+        #     raise HTTPError(400, reason='Unknown platform')
+        # record = db.get_app_version(pt)
+        least = [int(item) for item in record['least'].split('.')]
+        newest = [int(item) for item in record['newest'].split('.')]
+        print(ver, least, newest)
+        return ver==newest, ver>=least
 
 #***************************************************
 #

@@ -12,27 +12,6 @@ from MySQLdb import (IntegrityError)
 from db import db
 import util
 
-# ****************************************
-# 
-#  version operator
-#
-# ****************************************
-def check_version(ver, mask):
-    '''
-        return: the newest version, the least avaiable version
-    '''
-    ver = [int(item) for item in ver.split('.')]
-    pt = ''
-    if mask>>6 & 1:
-        pt = 'Android'
-    elif mask>>7 & 1:
-        pt = 'IOS'
-    else:
-        raise HTTPError(400, reason='Unknown platform')
-    record = db.get_app_version(pt)
-    least = [int(item) for item in record['least'].split('.')]
-    newest = [int(item) for item in record['newest'].split('.')]
-    return ver==newest, ver>=least
 
 def update_version(mask, **kwargs):
     pt = ''
@@ -52,7 +31,7 @@ def get_version(mask):
         pt = 'IOS'
     else:
         raise HTTPError(400, reason='Unknown platform')
-    db.get_app_version(pt)
+    return db.get_app_version(pt)
 
 def create_version(ver, mask):
     '''
