@@ -20,6 +20,9 @@ import tornado.httpclient
 import tornado.gen
 import tornado.httputil
 
+from tornado.util import errno_from_exception
+from tornado.platform.auto import set_close_exec
+
 from tornado.options import define, options
 
 define('port', default=8180, help='running on the given port', type=int)
@@ -888,10 +891,10 @@ def bind_udp_socket(port, address=None, family=socket.AF_UNSPEC, backlog=_DEFAUL
         try:
             sock = socket.socket(af, socktype, proto)
         except socket.error as e:
-            if tornado.util.errno_from_exception(e) == errno.EAFNOSUPPORT:
+            if errno_from_exception(e) == errno.EAFNOSUPPORT:
                 continue
             raise
-        tornado.netutil.set_close_exec(sock.fileno())
+        set_close_exec(sock.fileno())
         if os.name != 'nt':
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if af == socket.AF_INET6:
@@ -923,7 +926,7 @@ def add_udp_handler(sock, servers, io_loop=None):
                     # ac data arrived, deal with
                     pass
             except socket.error as e:
-                if tornado.util.errno_from_exception(e) in _ERRNO_WOULDBLOCK:
+                if errno_from_exception(e) in _ERRNO_WOULDBLOCK:
                     # _ERRNO_WOULDBLOCK indicate we have accepted every
                     # connection that is avaiable
                     return

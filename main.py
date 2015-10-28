@@ -16,6 +16,9 @@ import tornado.httpclient
 import tornado.gen
 import tornado.httputil
 
+from tornado.util import errno_from_exception
+from tornado.platform.auto import set_close_exec
+
 from tornado.options import define, options
 
 define('port', default=8080, help='running on the given port', type=int)
@@ -921,7 +924,6 @@ class AccountHandler(AccountBaseHandler):
     @_trace_wrapper
     @_parse_body
     def post(self, user=None):
-        logger.info('Request:{}'.format(self.request.arguments))
         user = self.get_argument('user')
         password = self.get_argument('password')
 
@@ -1646,7 +1648,7 @@ def add_udp_handler(sock, servers, io_loop=None):
     '''
     if io_loop is None:
         io_loop = tornado.ioloop.IOLoop.current()
-    def udp_hander(fd, events):
+    def udp_handler(fd, events):
         while True:
             try:
                 data, addr = sock.recvfrom(4096)
