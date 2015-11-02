@@ -59,6 +59,7 @@ author varchar(24) not null default '',
 groups int(11) unsigned not null default 0,
 status int(11) unsigned not null default 0,
 gmtype int(11) unsigned not null default 0,
+label varchar(64) not null default '',
 ctime datetime not null default current_timestamp,
 content text not null default '',
 image varchar(64) not null default '',
@@ -89,4 +90,20 @@ mtime datetime not null default current_timestamp,
 primary key (id), 
 unique index idx_ns_employee_mobile (mobile))
 auto_increment = 1000;
+'''
+
+# bd_account table
+bd_account = '''
+create table if not exists bd_account (
+user varchar(32) not null default '',
+password varchar(32) not null default '',
+mask int(11) unsigned not null default 0,
+time_length int(11) unsigned not null default 0,
+flow_length int(11) unsigned not null default 0,
+coin int unsigned not null default 0,
+expire_date datetime,
+ends int(11) unsigned not null default 2,
+holder int(11) unsigned not null default 0,
+mobile varchar(17) not null default '',
+primary key (user));
 '''

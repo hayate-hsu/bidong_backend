@@ -5,7 +5,7 @@
 '''
 from tornado.web import HTTPError
 import datetime
-import math
+# import math
 
 from MySQLdb import (IntegrityError)
 
@@ -74,18 +74,18 @@ def create_group(name, note):
 def get_manager(user):
     return db.get_manager(user)
 
-def registe(mac, mask):
-    # check user has been registed?
-    _id = ''
-    account = db.get_user(mac, mask)
-    if not account:
-        # check mac address login history
-        # create account
-        account = db.get_user_by_mac(mac)
-        if not account:
-            _id = db.add_user(mac, util.generate_password(), mask)
-
-    return _id or account['id']
+# def registe(mac, mask):
+#     # check user has been registed?
+#     _id = ''
+#     account = db.get_user(mac, mask)
+#     if not account:
+#         # check mac address login history
+#         # create account
+#         account = db.get_user_by_mac(mac)
+#         if not account:
+#             _id = db.add_user(mac, util.generate_password(), mask)
+# 
+#     return _id or account['id']
 
 @util.check_codes
 def create_holder(weixin, mobile, address, realname, portal='login.html', billing=0):
@@ -205,7 +205,7 @@ def remove_account(user, mask=1):
     else:
         db.remove_mac_history(user)
 
-def get_bd_account(user, fields=('user', 'mask', 'ends', 'expire_date', 'time_length', 'coin')):
+def get_bd_account(user, fields=('user', 'mask', 'ends', 'expire_date', 'coin')):
     account = db.get_bd_user(user)
     return account
 

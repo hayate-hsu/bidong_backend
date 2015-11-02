@@ -99,8 +99,6 @@ class Application(tornado.web.Application):
 
             # get mobile verify code
             (r'/mobile$', MobileHandler),
-            (r'/ns/bind$', NSBindHandler),
-
             # nansha interface
             (r'/ns/manager', NSManagerHandler),
             # add/update/delete nansha employee
@@ -309,6 +307,26 @@ def _parse_body(method):
                         break
                     else:
                         logger.warning('Invalid multipart/form-data')
+        return method(self, *args, **kwargs)
+    return wrapper
+
+def _check_token(method):
+    '''
+        check user & token
+    '''
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        user = self.get_argument('user') 
+        if not user:
+            raise HTTPError(400, reason='account can\'t be null')
+        token = self.get_argument('token')
+
+        token, expired = token.split('|')
+        token2 = util.token2(user, expired)
+        if token != token2:
+            raise HTTPError(400, reason='Abnormal token')
+        # check expired?
+
         return method(self, *args, **kwargs)
     return wrapper
 
@@ -930,6 +948,7 @@ class AccountHandler(AccountBaseHandler):
         _user = account.get_bd_account(user)
         if not _user:
             raise HTTPError(404, reason='account not existed')
+
         # if password != _user['password']:
         # if _user['password'] not in (password, util.md5(password).hexdigest(), util.md5(_user['password']).hexdigest()):
         if password not in (_user['password'], util.md5(_user['password']).hexdigest()):
@@ -1021,15 +1040,45 @@ class MergeHandler(AccountBaseHandler):
         token = util.token(user)
         return self.render_json_response(Code=200, Msg='OK', Token=token, **_user)
         
-class BindHandler(AccountBaseHandler):
+class BindHandler(AccountHandler):
     '''
     '''
+    def check_token(self, user):
+        if not user:
+            raise HTTPError(400, reason='account can\'t be null')
+        token = self.get_argument('token')
+
+        token, expired = token.split('|')
+        token2 = util.token2(user, expired)
+        if token != token2:
+            raise HTTPError(400, reason='Abnormal token')
+
     @_trace_wrapper
     @_parse_body
+    # @_check_token
     def post(self, user):
-        token = self.get_argument('token')
-        self.check_token(user, token)
-        # room : (holder+room)
+        self.check_token(user)
+        flags = int(self.get_argument('flags', 0))
+        if not flags:
+            self.bind_room(user)
+        else:
+            self.bind_mobile(user)
+
+    def bind_mobile(self, user):
+        mobile = self.get_argument('mobile')
+        # isns = self.get_argument('isns')
+
+        # set account binded mobile 
+        account.update_account(user, mobile=mobile)
+
+        if account.get_ns_employee(mobile=mobile):
+            # mobile is nansha employee
+            # bind ns_employee and bd_account 
+            account.bind_ns_employee(mobile, user)
+        
+        self.render_json_response(**OK)
+
+    def bind_room(self, user):
         room = self.get_argument('room') 
         password = self.get_argument('password')
 
@@ -1042,6 +1091,7 @@ class BindHandler(AccountBaseHandler):
         _user = account.get_bd_account(user)
         days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
         self.render_json_response(days=days, hours=hours, **OK)
+
 
 class HolderHandler(AccountBaseHandler):
     '''
@@ -1232,13 +1282,14 @@ class MobileHandler(BaseHandler):
         mobile = self.get_argument('mobile')
         if not self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
-        flags = self.get_argument('flags', 0)
-        if flags == 1:
-            # check account is nansha employee account
-            record = account.get_ns_employee(mobile=mobile)
-            if not record:
-                raise HTTPError(403, reason='mobile is not nansha employee')
-                # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
+        # flags = self.get_argument('flags', 0)
+        # if flags == 1:
+        #     # check account is nansha employee account
+        #     record = account.get_ns_employee(mobile=mobile)
+        #     if not record:
+        #         raise HTTPError(403, reason='mobile is not nansha employee')
+        #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
+        # isNS = 1 if account.get_ns_employee(mobile=mobile) else 0
         
         verify = util.generate_verify_code()
         self.render_json_response(verify=verify, **OK)
@@ -1567,35 +1618,6 @@ class NSAccountHandler(BaseHandler):
         logger.info('delete employee : (id:{}, mobile:{})'.format(employee, mobile))
 
         self.render_json_response(**OK)
-
-class NSBindHandler(BaseHandler):
-    '''
-        bind nansha employee's mobile with bd_account
-    '''
-    def check_token(self, user, token):
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self):
-        token = self.get_argument('token')
-        user = self.get_argument('user')
-        self.check_token(user, token)
-
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-        mobile = self.get_argument('mobile')
-
-        account.bind_ns_employee(mobile, user)
-
-        self.render_json_response(**OK)
-
 
 _DEFAULT_BACKLOG = 128
 # These errnos indicate that a non-blocking operation must be retried

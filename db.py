@@ -418,14 +418,11 @@ class Store():
                 cur.execute(sql)
                 user = cur.fetchone()
 
-                time_length = 0
                 mask = mask + 2**8 + 2**3
 
-                sql = '''insert into bd_account (user, password, mask, 
-                time_length, flow_length, expire_date, coin, 
-                mac, ip, holder, ends) values("{}", "{}", {}, 
-                {}, 0, "{}", 0, "", "", {}, 2)
-                '''.format(str(user['id']), password, mask, time_length, expire_date, user['id'])
+                sql = '''insert into bd_account (user, password, mask, expire_date, coin, holder, ends) 
+                values("{}", "{}", {}, "{}", 0, {}, 2)
+                '''.format(str(user['id']), password, mask, expire_date, user['id'])
                 cur.execute(sql)
 
             conn.commit()
@@ -630,10 +627,8 @@ class Store():
                 cur.execute('select * from bd_account where user = "{}"'.format(room_account))
                 if not cur.fetchone():
                     # add new record
-                    sql = '''insert into bd_account (user, password, mask, 
-                    time_length, flow_length, expire_date, coin, 
-                    mac, ip, holder, ends) values("{}", "{}", {}, 
-                    0, 0, "", 0, "", "", {}, 2)
+                    sql = '''insert into bd_account (user, password, mask, coin, holder, ends) 
+                    values("{}", "{}", {}, 0, {}, 2)
                     '''.format(room_account, util.generate_password(), mask, holder)
                     cur.execute(sql)
             conn.commit()
@@ -665,7 +660,7 @@ class Store():
         '''
         '''
         with Cursor(self.dbpool) as cur:
-            sql = 'select user, password, mask, expire_date, ends, time_length from bd_account where holder = "{}"'.format(holder)
+            sql = 'select user, password, mask, expire_date, ends from bd_account where holder = "{}"'.format(holder)
             cur.execute(sql)
             results = cur.fetchall()
             return results
@@ -694,10 +689,8 @@ class Store():
                     '''.format(modify_str, room_account)
                     cur.execute(sql)
                 else:
-                    sql = '''insert into bd_account (user, password, mask, 
-                    time_length, flow_length, expire_date, coin, 
-                    mac, ip, holder, ends) values("{}", "{}", {}, 
-                    0, 0, "{}", 0, "", "", {}, {})
+                    sql = '''insert into bd_account (user, password, mask, expire_date, coin, holder, ends) 
+                    values("{}", "{}", {}, "{}", 0, {}, {})
                     '''.format(room_account, fields['password'], fields['mask'], 
                                fields['expire_date'], holder, fields['ends'])
                     cur.execute(sql)
@@ -747,9 +740,8 @@ class Store():
             # mask = mask + 2**9
             coin = 60
 
-            sql = '''insert into bd_account (user, password, mask, 
-            time_length, flow_length, expire_date, coin, 
-            mac, ip, holder, ends) values("{}", "{}", {}, 0, 0, "", {}, "", "", 0, 5)
+            sql = '''insert into bd_account (user, password, mask, coin, holder, ends) 
+            values("{}", "{}", {}, {}, 0, 5)
             '''.format(str(user['id']), password, mask, coin)
             cur.execute(sql)
             conn.commit()
@@ -866,9 +858,8 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = '''insert into bd_account (user, password, mask, 
-            time_length, flow_length, coin, ends)
-            values(%s, %s, 3, 3600, 0, 0, 2)'''
+            sql = '''insert into bd_account (user, password, mask, coin, ends)
+            values(%s, %s, 3, 60, 2)'''
             cur.execute(sql, user, password)
             conn.commit()
 
@@ -994,13 +985,13 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            if mask>>2 & 1:
-                # update account
-                balance_sql = '''update bd_account set
-                    time_length = "{}", 
-                    flow_length = "{}" where user = "{}"
-                '''.format(time_length, flow_length, billing['user'])
-                cur.execute(balance_sql)
+            # if mask>>2 & 1:
+            #     # update account
+            #     balance_sql = '''update bd_account set
+            #         time_length = "{}", 
+            #         flow_length = "{}" where user = "{}"
+            #     '''.format(time_length, flow_length, billing['user'])
+            #     cur.execute(balance_sql)
 
             # update online
             online_sql = '''update online set
