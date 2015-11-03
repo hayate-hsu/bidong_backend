@@ -299,7 +299,7 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
-    def get_messages(self, groups, mask, isimg, gmtype, pos, nums=10):
+    def get_messages(self, groups, mask, isimg, gmtype, label, pos, nums=10):
         '''
             id title subtitle section mask author groups status ctime content image
             get groups's messages excelpt content filed
@@ -314,6 +314,7 @@ class Store():
             sql = ''
             gmtype = 'message.gmtype = {} and '.format(gmtype) if gmtype else ''
             isimg = 'message.image <> "" and '.format(isimg) if isimg else ''
+            label = " and label like'%{}%'".format(label) if label else ''
 
             if mask:
                 sql = '''select {}, section.name as section from message, section 
@@ -323,9 +324,9 @@ class Store():
             else:
                 # doesn't check message type
                 sql = '''select {}, section.name as section from message, section 
-                where {}{}message.groups = {} and message.section = section.id 
+                where {}{}message.groups = {} and message.section = section.id{} 
                 order by message.status desc, message.ctime desc limit {},{}
-                '''.format(filters, gmtype, isimg, groups, pos, nums)
+                '''.format(filters, gmtype, isimg, groups, label, pos, nums)
 
             cur.execute(sql)
             results = cur.fetchall()

@@ -181,10 +181,10 @@ class BaseHandler(tornado.web.RequestHandler):
             pass request handler environment to template engine
         '''
         try:
-            if not self.is_mobile():
-                template = self.LOOK_UP.get_template(filename)
-            else:
-                template = self.LOOK_UP_MOBILE.get_template(filename)
+            # if not self.is_mobile():
+            template = self.LOOK_UP.get_template(filename)
+            # else:
+            #     template = self.LOOK_UP_MOBILE.get_template(filename)
             env_kwargs = dict(
                 handler = self,
                 request = self.request,
@@ -450,8 +450,14 @@ class PageHandler(BaseHandler):
             token2 = util.token2(manager, expired)
             if token != token2:
                 raise HTTPError(400, reason='Abnormal token')
+
             self.render(page, groups=_check_groups_(manager))
         else:
+            # if page in ('newsdetail.html',) and self.is_mobile():
+            #     _id = self.get_argument('id')
+            #     message = manage.get_message(_id)
+            #     if message:
+            #         self.render('m_message.tmpt', **message)
             return self.render(page)
 
 class ManagerHandler(BaseHandler):
@@ -690,7 +696,10 @@ class MessageHandler(BaseHandler):
         if accept.startswith('application/json'):
             self.render_json_response(Code=200, Msg='OK', **message)
         else:
-            self.render('message.tmpt', **message)
+            if self.is_mobile():
+                self.render('m_message.tmpt', **message)
+            else:
+                self.render('message.tmpt', **message)
 
     @_trace_wrapper
     @_parse_body
@@ -720,6 +729,7 @@ class MessageHandler(BaseHandler):
         else:
             # user get messages
             groups = int(self.get_argument('groups'))
+        label = self.get_argument('label', '')
         page = int(self.get_argument('page', 0))
         nums = int(self.get_argument('per', 10))
         mask = int(self.get_argument('mask', 0))
@@ -727,7 +737,7 @@ class MessageHandler(BaseHandler):
         isimg = int(self.get_argument('isimg', 0))
         pos = page*nums
 
-        messages = manage.get_messages(groups, mask, isimg, gmtype, pos, nums)
+        messages = manage.get_messages(groups, mask, isimg, gmtype, label, pos, nums)
         isEnd = 1 if len(messages) < nums else 0
 
         self.render_json_response(Code=200, Msg='OK', messages=messages, end=isEnd)
@@ -739,6 +749,7 @@ class MessageHandler(BaseHandler):
         '''
             create new message record
             title subtitle section mask author groups status ctime content image
+            labels : labes are separate by ' '
         '''
         logger.info('{}'.format(self.request.arguments))
         manager = self.get_argument('manager')

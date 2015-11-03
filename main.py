@@ -1069,14 +1069,16 @@ class BindHandler(AccountHandler):
         # isns = self.get_argument('isns')
 
         # set account binded mobile 
+        isNS = 0
         account.update_account(user, mobile=mobile)
 
         if account.get_ns_employee(mobile=mobile):
             # mobile is nansha employee
             # bind ns_employee and bd_account 
+            isNS = 1
             account.bind_ns_employee(mobile, user)
         
-        self.render_json_response(**OK)
+        self.render_json_response(isns=isNS, **OK)
 
     def bind_room(self, user):
         room = self.get_argument('room') 
