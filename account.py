@@ -33,7 +33,7 @@ def get_version(mask):
         raise HTTPError(400, reason='Unknown platform')
     return db.get_app_version(pt)
 
-def create_version(ver, mask):
+def create_version(ver, mask, note):
     '''
         create app version
     '''
@@ -46,9 +46,9 @@ def create_version(ver, mask):
         raise HTTPError(400, reason='Unknown platform')
     record = get_version(mask)
     if record:
-        db.update_app_version(pt, newest=ver, least=ver)
+        db.update_app_version(pt, newest=ver, least=ver, note=note)
     else:
-        db.add_app_version(pt, ver)
+        db.add_app_version(pt, ver, note)
 
 
 # ****************************************

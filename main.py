@@ -1376,8 +1376,9 @@ class VersionHandler(BaseHandler):
     def post(self):
         mask = int(self.get_argument('mask'))
         ver = self.get_argument('version')
+        note = self.get_argument('note', '')
 
-        account.create_version(ver, mask)
+        account.create_version(ver, mask, note)
         self.render_json_response(Code=200, Msg='OK')
 
     @_trace_wrapper
@@ -1387,6 +1388,7 @@ class VersionHandler(BaseHandler):
         kwargs = {}
         kwargs['newest'] = self.get_argument('newest', '')
         kwargs['least'] = self.get_argument('least', '')
+        kwargs['note'] = self.get_argument('note', '')
         for key in kwargs.keys():
             if not kwargs[key]:
                 kwargs.pop(key)

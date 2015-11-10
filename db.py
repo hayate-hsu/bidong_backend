@@ -94,12 +94,12 @@ class Store():
     # app version operator
     #
     # ************************************************ 
-    def add_app_version(self, pt, version):
+    def add_app_version(self, pt, version, note):
         '''
         '''
         with Connect(self.dbpool) as conn:
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'insert into app_ver (pt, newest, least) values("{}", "{}", "{}")'.format(pt, version, version)
+            sql = 'insert into app_ver (pt, newest, least, note) values("{}", "{}", "{}", "{}")'.format(pt, version, version, note)
             cur.execute(sql)
             conn.commit()
 
