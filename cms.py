@@ -265,17 +265,32 @@ class BaseHandler(tornado.web.RequestHandler):
             self.finish(json_encoder(kwargs))
 
     def is_mobile(self):
-        agent_str = self.request.headers.get('User-Agent', '')
-        if not agent_str:
+        self.agent_str = self.request.headers.get('User-Agent', '')
+        if not self.agent_str:
             return False
 
-        if 'MicroMessenger' in agent_str:
+        if 'MicroMessenger' in self.agent_str:
             # from weixin client
             return True
 
-        agent = user_agents.parse(agent_str)
+        self.check_app()
+        if hasattr(self, 'is_mobile'):
+            return self.is_mobile
+
+        agent = user_agents.parse(self.agent_str)
 
         return agent.is_mobile
+
+    def check_app(self):
+        '''
+        '''
+        name = '\xe8\x87\xaa\xe8\xb4\xb8\xe9\x80\x9a'
+        if name in self.agent_str:
+            self.is_mobile = True
+            # if self.agent_str.find('Android'):
+            #     self.agent['os'] = 'Android'
+            # else:
+            #     self.agent['os'] = 'IOS'
 
 def _parse_body(method):
     '''

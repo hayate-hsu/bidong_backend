@@ -1111,6 +1111,17 @@ class Store():
             cur.execute(sql)
             conn.commit()
 
+    def unbind(self, weixin, user):
+        '''
+            unbind weixin account & renter account
+        '''
+        with Connect(self.dbpool) as conn:
+            # cur = conn.cursor()
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            sql = 'delete from bind where weixin="{}"'.format(weixin)
+            cur.execute(sql)
+            conn.commit()
+
     def merge_app_account(self, _id, user):
         '''
             merge mac account to app account
@@ -1220,6 +1231,15 @@ class Store():
                 mask = user['mask'] | (1<<16) 
                 sql = 'update bd_account set mask = {} where user = "{}"'.format(mask, user['user']) 
                 cur.execute(sql)
+            conn.commit()
+
+    def unbind_ns_employee(self, mobile, user):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            sql = 'delete from bind where weixin="ns_{}" and renter="{}"'.format(mobile, user)
+            cur.execute(sql)
             conn.commit()
 
     def delete_ns_employee(self, mobile):

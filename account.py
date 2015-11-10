@@ -250,6 +250,9 @@ def bind(weixin, user):
     '''
     db.bind(weixin, user)
 
+def unbind(weixin, user):
+    db.unbind(weixin, user)
+
 ########################################################
 #
 #
@@ -424,6 +427,13 @@ def bind_ns_employee(mobile, user):
     assert user
     # user record 
     db.bind_ns_employee(mobile, user)
+
+def unbind_ns_employee(mobile, user):
+    '''
+        mobile : mobile number
+        user   : bd_account
+    '''
+    db.unbind_ns_employee(mobile, user)
 
 def delete_ns_employee(mobile):
     db.delete_ns_employee(mobile)

@@ -1064,6 +1064,20 @@ class BindHandler(AccountHandler):
         else:
             self.bind_mobile(user)
 
+    # current desn't open unbind interface to client
+    # @_trace_wrapper
+    # @_parse_body
+    # def delete(self, user):
+    #     self.check_token(user)
+    #     flags = int(self.get_argument('flags', 0))
+    #     if not flags:
+    #         # unbind room
+    #         self.unbind_room(user)
+    #     else:
+    #         # unbind mobile number
+    #         self.unbind_mobile(user)
+
+
     def bind_mobile(self, user):
         mobile = self.get_argument('mobile')
         # isns = self.get_argument('isns')
@@ -1080,6 +1094,19 @@ class BindHandler(AccountHandler):
         
         self.render_json_response(isns=isNS, **OK)
 
+    def unbind_mobile(self, user):
+        mobile = self.get_argument('mobile')
+        isNs = 0
+        
+        # set '' to mobile field
+        account.update_account(user, mobile='')
+        if account.get_ns_employee(mobile=mobile):
+            isNs = 1
+            account.unbind_ns_employee(mobile, user)
+
+        self.render_json_response(isns=isNs, **OK)
+
+
     def bind_room(self, user):
         room = self.get_argument('room') 
         password = self.get_argument('password')
@@ -1094,6 +1121,18 @@ class BindHandler(AccountHandler):
         days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
         self.render_json_response(days=days, hours=hours, **OK)
 
+    def unbind_room(self, user):
+        room = self.get_argument('room')
+        # password = self.get_argument('password')
+
+        # check room & password
+        _user = account.get_bd_account(room)
+        if not _user:
+            raise HTTPError(401, reason='Please check your room')
+
+        account.unbind(user, room)
+
+        self.render_json_response(**OK)
 
 class HolderHandler(AccountBaseHandler):
     '''
