@@ -34,6 +34,7 @@ class Connect:
         self.conn = dbpool.connect()
 
     def __enter__(self):
+        self.conn.begin()
         return self.conn
 
     def __exit__(self, exc_type, exc_value, exc_tb):
@@ -60,7 +61,11 @@ class MySQLPool():
             user=config['user'],
             passwd=config['passwd'],
             charset=config['charset'],
-            maxusage=config['maxusage']
+            maxusage=config['maxusage'],
+
+            # set read & write timeout
+            read_timeout=config['read_timeout'],
+            write_timeout=config['write_timeout'],
         )
 
     def cursor(self, conn):
