@@ -886,7 +886,10 @@ class Store():
     def get_bd_user(self, user):
         '''
         '''
-        with Cursor(self.dbpool) as cur:
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            conn.commit()
+        # with Cursor(self.dbpool) as cur:
             cur.execute('select * from bd_account where user = "{}"'.format(user))
             user = cur.fetchone()
             if user and user['mask'] & 1<<5:

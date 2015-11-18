@@ -869,7 +869,6 @@ class ImageHandler(BaseHandler):
             engineer uplaod image
             update engineer's image
         '''
-        # engineer = self.get_argument('engineer')
         file_metas = self.request.files['uploadImg']
         filename, ext = _id, ''
         for meta in file_metas:
