@@ -102,9 +102,8 @@ class Application(tornado.web.Application):
             # nansha interface
             (r'/ns/manager', NSManagerHandler),
             # add/update/delete nansha employee
-            (r'/ns/account/?(.*)$', NSAccountHandler),
-            # add notice
-            (r'/ns/notices?/?(.*)$', NSNoticeHandler),
+            (r'/pn/(.*?)/(.*)$', PNAccountHandler),
+            (r'/pn/(.*)$', PNHolderHandler),
 
             # group interface
             (r'groups/?(.*)$', GroupsHandler),
@@ -316,7 +315,7 @@ def _check_token(method):
     '''
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
-        user = self.get_argument('user') 
+        user = self.get_argument('user') or self.get_argument('manager') 
         if not user:
             raise HTTPError(400, reason='account can\'t be null')
         token = self.get_argument('token')
@@ -705,7 +704,11 @@ class ManagerHandler(AccountBaseHandler):
             if action == 'holder':
                 holders = self.get_argument('holders')
                 for holder in holders:
-                    _id = account.create_holder('', holder['mobile'], holder['address'], holder['realname'])
+                    try:
+                        _id = account.create_holder('', holder['mobile'], holder['address'], holder['realname'])
+                    except:
+                        pass
+
                     if _id:
                         # verify holder
                         account.verify_holder(_id, expire_date=holder['expire_date'], mask=3, verify=1)
@@ -1077,35 +1080,28 @@ class BindHandler(AccountHandler):
     #         # unbind mobile number
     #         self.unbind_mobile(user)
 
-
     def bind_mobile(self, user):
         mobile = self.get_argument('mobile')
-        # isns = self.get_argument('isns')
-
-        # set account binded mobile 
-        isNS = 0
+        holder = self.get_argument('holder')
+        
         account.update_account(user, mobile=mobile)
 
-        if account.get_ns_employee(mobile=mobile):
-            # mobile is nansha employee
-            # bind ns_employee and bd_account 
-            isNS = 1
-            account.bind_ns_employee(mobile, user)
-        
-        self.render_json_response(isns=isNS, **OK)
+        if account.get_pn_account(holder, mobile=mobile):
+            account.bind_pn_account(holder, user, mobile)
+
+        self.render_json_response(**OK)
+
 
     def unbind_mobile(self, user):
         mobile = self.get_argument('mobile')
-        isNs = 0
+        holder = self.get_argument('holder')
         
         # set '' to mobile field
-        account.update_account(user, mobile='')
-        if account.get_ns_employee(mobile=mobile):
-            isNs = 1
-            account.unbind_ns_employee(mobile, user)
+        # account.update_account(user, mobile='')
+        if account.get_pn_account(holder, mobile=mobile):
+            account.unbind_pn_account(holder, mobile)
 
-        self.render_json_response(isns=isNs, **OK)
-
+        self.render_json_response(**OK)
 
     def bind_room(self, user):
         room = self.get_argument('room') 
@@ -1331,9 +1327,18 @@ class MobileHandler(BaseHandler):
         #         raise HTTPError(403, reason='mobile is not nansha employee')
         #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         # isNS = 1 if account.get_ns_employee(mobile=mobile) else 0
+        ssid = ''
+        pn = self.get_argument('pn', '')
+        if pn:
+            # check private network, is mobile has privilege to access pn
+            record = account.get_pn_account(pn, mobile=mobile)
+            if record:
+                ssid = record['ssid']
+            else:
+                raise HTTPError(403, reason='no privilege')
         
         verify = util.generate_verify_code()
-        self.render_json_response(verify=verify, **OK)
+        self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
 
         # send verify code to special mobile
         data = json_encoder({'mobile':mobile, 'code':verify})
@@ -1435,101 +1440,10 @@ class RegisterHandler(BaseHandler):
 #***************************************************
 #
 #   
-#     Nansha city handler
+#     Private network handler
 #
 #
 #****************************************************
-class NSNoticeHandler(BaseHandler):
-    '''
-        App get notices
-        Manager add new record 
-    '''
-    PER = 10
-
-    def check_token(self, user, token):
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
-
-    @_trace_wrapper
-    @_parse_body
-    def get(self, _id=''):
-        '''
-            get notices & special notice
-        '''
-        accept = self.request.headers.get('Accept', 'text/html')
-        if _id:
-            # get special notice
-            notice = account.get_notice(_id)
-            if not notice:
-                raise HTTPError(404, reason='Can\'t found notice:{}'.format(_id))
-            if accept.startswith('application/json'):
-                return self.render_json_response(Code=200, Msg='OK', **notice)
-            else:
-                return self.render('nansha/{}.html'.format(_id), **notice)
-        else:
-            # get notices
-            # item: id, datetime, caption, 
-            page = self.get_argument('page', 0)
-            notices = account.get_notices(page)
-            isEnd = 0
-            if len(notices) < self.PER:
-                isEnd = 1
-            return self.render_json_response(notices=notices, isEnd=isEnd, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self, _id=None):
-        '''
-            add new notice
-        '''
-        m_token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, m_token)
-
-        caption = self.get_argument('caption')
-        summary = self.get_argument('summary')
-        mask = int(self.get_argument('mask', 0))
-
-        _id = account.publish_notice(caption=caption, summary=summary, mask=mask)
-
-        logger.info('publish new notice: id:{}, mask:{}'.format(_id, mask))
-
-        self.render_json_response(id=_id, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def put(self, _id):
-        '''
-            update existed notice
-        '''
-        m_token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, m_token)
-
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        account.update_notice(_id, **kwargs)
-
-        self.render_json_response(id=_id, **OK)
-
-    @_trace_wrapper
-    @_parse_body
-    def delete(self, _id):
-        '''
-            update existed notice
-        '''
-        m_token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, m_token)
-
-        account.remove_notice(_id)
-
-        self.render_json_response(id=_id, **OK)
-
 class NSManagerHandler(BaseHandler):
     '''
     '''
@@ -1564,31 +1478,81 @@ class NSManagerHandler(BaseHandler):
 
         self.render_json_response(token=token, **OK)
 
-class NSAccountHandler(BaseHandler):
+class PNHolderHandler(BaseHandler):
     '''
-        manager edit employee's details
+        private network holder operator
     '''
-    def check_token(self, user, token):
-        token, expired = token.split('|')
-        token2 = util.token2(user, expired)
-        if token != token2:
-            raise HTTPError(400, reason='abnormal token')
+    def check_user(self):
+        '''
+        '''
+        user = self.get_argument('user', '') or self.get_argument('manager', '')
+        if not user:
+            raise HTTPError(400)
+        if user not in ('admin', ):
+            raise HTTPError(403, reason='No privilege')
+
 
     @_trace_wrapper
+    @_check_token
     @_parse_body
-    def get(self, employee=None):
+    def post(self, pn):
         '''
-            return special employee
-            can be searched by id & mobile
+            create private network
         '''
+        self.check_user()
+        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
+        kwargs.pop('token')
+        kwargs.pop('manager')
+
+        if not kwargs:
+            raise HTTPError(400)
+        if 'pn' not in kwargs:
+            raise HTTPError(400)
+
+        account.create_pn(**kwargs)
+
+        self.render_json_response(**OK)
+
+    @_trace_wrapper
+    @_check_token
+    @_parse_body
+    def put(self, pn):
+        '''
+        '''
+        self.check_user()
+        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
+        kwargs.pop('token')
+        kwargs.pop('manager')
+
+        pn = kwargs.pop('pn')
+        if not kwargs:
+            raise HTTPError(400)
+
+        account.update_pn(pn, **kwargs)
+        self.render_json_response(**OK)
+
+    # @_trace_wrapper
+    # @_check_token
+    # @_parse_body
+    # def delete(self, pn):
+    #     self.check_user()
+    #     pass
+
+class PNAccountHandler(BaseHandler):
+    '''
+        manager edit private network's employees
+    '''
+    @_trace_wrapper
+    @_check_token
+    @_parse_body
+    def get(self, holder, employee=None):
         kwargs = {}
         if employee:
             kwargs['id'] = employee
         else:
             kwargs['mobile'] = self.get_argument('mobile')
-        if not kwargs:
-            raise HTTPError(400)
-        record = account.get_ns_employee(**kwargs)
+
+        record = account.get_pn_account(holder, **kwargs)
         if not record:
             raise HTTPError(404)
 
@@ -1596,71 +1560,48 @@ class NSAccountHandler(BaseHandler):
 
 
     @_trace_wrapper
+    @_check_token
     @_parse_body
-    def post(self, employee=None):
-        '''
-            manager add new employee records
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
-        logger.info(self.request.arguments)
-
+    def post(self, holder, employee=None):
         kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
         kwargs.pop('token')
         kwargs.pop('manager')
-        # kwargs = {}
-        # kwargs['user'] = self.get_argument('user')
-        # kwargs['name'] = self.get_argument('name')
-        # kwargs['gender'] = int(self.get_argument('gender', 0))
-        # kwargs['mobile'] = self.get_argument('mobile')
-        # kwargs['position'] = self.get_argument('position', '')
-        # kwargs['department'] = self.get_argument('department', '')
 
-        _id = account.add_ns_employee(**kwargs)
+        if not kwargs:
+            raise HTTPError(400)
+
+        _id = account.add_pn_account(holder, **kwargs)
         
         logger.info('add new employee successfully(id:{}, mobile:{})'.format(_id, kwargs['mobile']))
         self.render_json_response(id=_id, **OK)
 
     @_trace_wrapper
+    @_check_token
     @_parse_body
-    def put(self, employee):
-        '''
-            update employee's info
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
+    def put(self, holder, employee):
         kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
         kwargs.pop('token')
         kwargs.pop('manager')
 
-        if kwargs:
-            account.update_ns_employee(employee, **kwargs)
+        if not kwargs:
+            raise HTTPError(400)
 
-        logger.info('update {}\'s info: {}'.format(employee, kwargs))
+        account.update_pn_account(holder, employee, **kwargs)
+
+        logger.info('update {}-{}\'s info'.format(holder, employee))
 
         self.render_json_response(**OK)
 
     @_trace_wrapper
+    @_check_token
     @_parse_body
-    def delete(self, employee):
-        '''
-            delete special employee by mobile
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
+    def delete(self, holder, employee):
         mobile = self.get_argument('mobile')
-
-        account.delete_ns_employee(mobile) 
-
-        logger.info('delete employee : (id:{}, mobile:{})'.format(employee, mobile))
+        account.delete_pn_account(holder, mobile) 
+        logger.info('delete {}\'s employee : (id:{}, mobile:{})'.format(holder, employee, mobile))
 
         self.render_json_response(**OK)
+
 
 _DEFAULT_BACKLOG = 128
 # These errnos indicate that a non-blocking operation must be retried

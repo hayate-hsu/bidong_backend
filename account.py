@@ -364,79 +364,100 @@ def query_transfer(user):
     # now = datetime.datetime.now()
     # now = now.strftime('%Y-%m-%d')
     db.get_trades(user)
-     
-    
+
 #########################################################
 #
 #
-#   nansha employee manager
+#   private newtork manager
 #
 #
 ##########################################################
-def get_ns_employee(**kwargs):
+def query_avaiable_pns(mobile):
     '''
-        kwargs: nan sha employee fields
     '''
-    return db.get_ns_employee(**kwargs)
+    return db.query_avaiable_pns(mobile)
 
-def get_ns_employees(pos, nums):
-    pass
+def bind_avaiable_pns(user, mobile):
+    '''
+    '''
+    return db.bind_avaiable_pns(user, mobile)
+
+def create_pn(**kwargs):
+    '''
+        user create private network with special ssid
+    '''
+    try:
+        db.create_pn(**kwargs)
+    except IntegrityError:
+        pass
+
+def update_pn(pn, **kwargs):
+    '''
+        update pn property
+    '''
+    db.update_pn(pn, **kwargs)
+
+def get_pn_account(holder, **kwargs):
+    '''
+        holder : identify table (pn_holder)
+        kwargs : private network
+    '''
+    table = 'pn_{}'.format(holder)
+    return db.get_pn_account(table, **kwargs)
 
 @util.check_codes
-def add_ns_employee(**kwargs):
+def add_pn_account(holder, **kwargs):
     '''
-        employee table fields:
+        private network fields:
             name mobile gender position department ctime mtime
             if operator successfully, return new added id
     '''
     assert 'mobile' in kwargs
-    # employee = get_ns_employee(mobile=kwargs['mobile'])
-    # if employee:
-    #     raise HTTPError(400, reason='employee has been existed')
     try:
-        _id = db.add_ns_employee(**kwargs)
+        table = 'pn_{}'.format(holder)
+        _id = db.add_pn_account(table, **kwargs)
     except IntegrityError:
-        raise HTTPError(403, reason='employee has been existed, mobile:{}'.format(kwargs['mobile']))
+        raise HTTPError(403, reason='private network account has been existed, mobile:{}'.format(kwargs['mobile']))
     else:
         return _id
 
 @util.check_codes
-def update_ns_employee(_id, **kwargs):
+def update_pn_account(holder, _id, **kwargs):
     '''
-        update existed employee's info
+        update existed private network's info
     '''
     try:
         kwargs['mtime'] = util.now()
-        db.update_ns_employee(_id, **kwargs)
+        table = 'pn_{}'.format(holder)
+        db.update_pn_account(table, _id, **kwargs)
     except IntegrityError:
         raise HTTPError(400, reason='mobile number has been existed')
 
-def get_binded_account(mobile):
+def bind_pn_account(holder, user, mobile):
     '''
+        bind bd_account with private network account
     '''
-    return db.get_employee_binded_account(mobile)
-
-def bind_ns_employee(mobile, user):
-    '''
-        mobile : mobile number
-        user : bd_account 
-    '''
-    if not get_ns_employee(mobile=mobile):
+    if not get_pn_account(holder, mobile=mobile):
         return
     user = get_bd_account(user)
     assert user
-    # user record 
-    db.bind_ns_employee(mobile, user)
+    
+    try:
+        db.bind_pn_account(holder, user, mobile)
+    except IntegrityError:
+        # idx_bind_pairs (user, holder, mobile)
+        # duplicate entry
+        pass
 
-def unbind_ns_employee(mobile, user):
+def unbind_pn_account(holder, mobile):
     '''
-        mobile : mobile number
-        user   : bd_account
     '''
-    db.unbind_ns_employee(mobile, user)
+    db.unbind_pn_account(holder, mobile)
 
-def delete_ns_employee(mobile):
-    db.delete_ns_employee(mobile)
+def delete_pn_account(holder, mobile):
+    '''
+    '''
+    db.delete_pn_account(holder, mobile)
 
 #########################################################
 #

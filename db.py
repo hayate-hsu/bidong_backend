@@ -742,7 +742,6 @@ class Store():
             sql = 'select id from account where {} = "{}"'.format(column, user)
             cur.execute(sql)
             user = cur.fetchone()
-            print(user)
             #
             # mask = mask + 2**9
             coin = 60
@@ -766,6 +765,16 @@ class Store():
             # cur.execute(sql)
             conn.commit()
 
+    def update_user2(self, user, **kwargs):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            update_str = ', '.join(['{}="{}"'.format(key, value) for key,value in kwargs.iteritems()])
+            sql = 'update bd_account set {} where user="{}"'.format(update_str, user)
+            cur.execute(sql)
+            conn.commit()
+
     def remove_mac_history(self, user):
         '''
             delete user binded mac histories
@@ -784,7 +793,7 @@ class Store():
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             
             # remove binded records & nansha city binded records 
-            sql = 'delete from bind where weixin="{}" or renter="{}"'.format(user, user)
+            sql = 'delete from pn_bind where user="{}"'.format(user)
             cur.execute(sql)
 
             # remove mac_history
@@ -803,17 +812,6 @@ class Store():
                 # user can't convert to int, the account 
                 pass
 
-            conn.commit()
-
-    def update_user2(self, user, **kwargs):
-        '''
-            update bd_account info 
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            update_str = ', '.join(['{}="{}"'.format(key, value) for key,value in kwargs.iteritems()])
-            sql = 'update bd_account set {} where user = "{}"'.format(update_str, user)
-            cur.execute(sql)
             conn.commit()
 
     def transfer_coin(self, user, to, coins):
@@ -1168,120 +1166,189 @@ class Store():
     #**************************************************
     #
     #
-    #     nan sha employee manager
+    #     private network method
     #
     #
     #**************************************************
-    def add_ns_employee(self, **kwargs):
+    def query_avaiable_pns(self, mobile):
+        '''
+        '''
+        with Cursor(self.dbpool) as cur:
+            sql = 'select * from pn_policy where ispri = 1'
+            cur.execute(sql)
+            results = []
+            for item in cur:
+                sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
+                cur.execute(sql)
+                if cur.fetchone():
+                    results.append(item)
+
+            return results
+
+    def bind_avaiable_pns(self, user, mobile):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            results = []
+
+            # found avaiable 
+            sql = 'select * from pn_policy where ispri = 1'
+            cur.execute(sql)
+
+            for item in cur:
+                sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
+                cur.execute(sql)
+                if cur.fetchone():
+                    results.append(item)
+
+            if results:
+                for item in results:
+                    sql = 'insert into pn_bind(user, holder, mobile) values("{}", {}, "{}")'.format(user, item['pn'], mobile)
+                    try:
+                        cur.execute(sql)
+                    except MySQLdb.IntegrityError:
+                        # existed bind pair
+                        pass
+
+            conn.commit()
+            return results
+
+    def create_pn(self, **kwargs):
+        '''
+        '''
         with Connect(self.dbpool) as conn:
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             keys = ', '.join(kwargs.keys()) 
             values = ', '.join(['"{}"'.format(item) for item in kwargs.values()])
-            sql = 'insert into ns_employee ({}) values({})'.format(keys, values)
+            sql = 'insert into pn_policy ({}) values({})'.format(keys, values)
+
             cur.execute(sql)
-            sql = 'select id from ns_employee where mobile = {}'.format(kwargs['mobile'])
+            conn.commit()
+
+    def update_pn(self, pn, **kwargs):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            modify_str = ', '.join(['{}="{}"'.format(key, value) for key,value in kwargs.iteritems()])
+            sql = 'update pn_policy set {} where pn={}'.format(modify_str, pn)
+            cur.execute(sql)
+            conn.commit()
+
+    def add_pn_account(self, table, **kwargs):
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            keys = ', '.join(kwargs.keys()) 
+            values = ', '.join(['"{}"'.format(item) for item in kwargs.values()])
+            sql = 'insert into {} ({}) values({})'.format(table, keys, values)
+            cur.execute(sql)
+            sql = 'select id from {} where mobile = {}'.format(table, kwargs['mobile'])
             cur.execute(sql)
             _id = cur.fetchone()['id']
             conn.commit()
             return _id
 
-    def update_ns_employee(self, _id, **kwargs):
+    def update_pn_account(self, table, _id, **kwargs):
         with Connect(self.dbpool) as conn:
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             modify_str = ', '.join(['{}="{}"'.format(key, value) for key,value in kwargs.iteritems()])
-            sql = 'update ns_employee set {} where id={}'.format(modify_str, _id)
+            sql = 'update {} set {} where id={}'.format(table, modify_str, _id)
             cur.execute(sql)
             conn.commit()
 
-    def get_ns_employee(self, **kwargs):
+    def get_pn_account(self, table, **kwargs):
         with Cursor(self.dbpool) as cur:
-            # query_list = []
-            # for key,value in kwargs.iteritems():
-            #     if isinstance(value, int):
-            #         query_list.append('{}={}'.format(key, value))
-            #     else:
-            #         query_list.append('{}="{}"'.format(key, value))
-            # query_str = 'and '.join(query_list)
             query_str = self._combine_query_kwargs(**kwargs)
-            sql = 'select * from ns_employee where {}'.format(query_str)
+            sql = 'select * from {} where {}'.format(table, query_str)
             cur.execute(sql)
             return cur.fetchone()
 
-    def get_employee_binded_account(self, mobile):
+    def bind_pn_account(self, holder, user, mobile):
         '''
-            nan sha binded account 
-            employee's mobile number & bd_account
-        '''
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from bind where mobile = "ns_{}"'.format(mobile)
-            cur.execute(sql)
-            results = cur.fetchall()
-            return results if results else []
-
-    def bind_ns_employee(self, mobile, user):
-        '''
-            bind nan sha employee account with bd_account
-            do two steps:
-                1. add bind record (ns_mobile, user)
-                2. modify account's mask(| 1<<16)
+            bind user & mobile account in pn_bind
         '''
         with Connect(self.dbpool) as conn:
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'select * from bind where weixin="ns_{}" and renter="{}"'.format(mobile, user['user'])
+            # found previous binded pairs
+            # sql = 'select * from bind where weixin="pn_{}" and renter="{}"'.format(user, holder)
+            sql = 'insert into pn_bind (user, holder, mobile) values("{}", {}, "{}")'.format(user, holder, mobile)
             cur.execute(sql)
-            if not cur.fetchone():
-                # not existed, add new record
-                sql = 'insert into bind (weixin, renter) values("ns_{}", "{}")'.format(mobile, user['user'])
-                cur.execute(sql)
-            # set user's mask(1<<16), nansha employee flags
-            if not (user['mask'] & 1<<16):
-                # set 1<<16
-                mask = user['mask'] | (1<<16) 
-                sql = 'update bd_account set mask = {} where user = "{}"'.format(mask, user['user']) 
-                cur.execute(sql)
             conn.commit()
 
-    def unbind_ns_employee(self, mobile, user):
+
+    def unbind_pn_account(self, holder, mobile):
         '''
+            unbind holder's user & mobile bind pairs in pn_bind
         '''
         with Connect(self.dbpool) as conn:
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'delete from bind where weixin="ns_{}" and renter="{}"'.format(mobile, user)
+            sql = 'delete from pn_bind where holder={} and mobile="{}"'.format(holder, mobile)
             cur.execute(sql)
             conn.commit()
 
-    def delete_ns_employee(self, mobile):
+    def delete_pn_account(self, holder, mobile):
         '''
-            delete nan sha employee account binded bd_account
-            do three steps:
-                1. query binded bd_account
-                2. set account's mask (^ 1<<16)
-                3. delete binded record
+            private network manager delete his record:
+                1. delete holder's binded pairs
+                2. delete holder's account record
         '''
         with Connect(self.dbpool) as conn:
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'select * from bind where weixin = "ns_{}"'.format(mobile)
-            cur.execute(sql)
-            records = cur.fetchall()
-            for record in records:
-                sql = 'select user, mask from bd_account where user = "{}"'.format(record['renter'])
-                cur.execute(sql)
-                record = cur.fetchone()
-                if record:
-                    mask = record['mask']
-                    if mask & (1<<16):
-                        mask = mask ^ 1<<16
-                        sql = 'update bd_account set mask = {} where user = "{}"'.format(mask, record['user'])
-                        cur.execute(sql)
-            # delete binded records
-            sql = 'delete from bind where weixin = "ns_{}"'.format(mobile)
+            # delete binded pairs
+            sql = 'delete from pn_bind where holder={} and mobile="{}"'.format(holder, mobile)
             cur.execute(sql)
 
-            # delete ns_employee record
-            sql = 'delete from ns_employee where mobile = "{}"'.format(mobile)
+            # delete holder's account record
+            sql = 'delete from pn_{} where mobile="{}"'.format(holder, mobile)
             cur.execute(sql)
-
             conn.commit()
+
+    # def get_employee_binded_account(self, mobile):
+    #     '''
+    #         nan sha binded account 
+    #         employee's mobile number & bd_account
+    #     '''
+    #     with Cursor(self.dbpool) as cur:
+    #         sql = 'select * from bind where mobile = "ns_{}"'.format(mobile)
+    #         cur.execute(sql)
+    #         results = cur.fetchall()
+    #         return results if results else []
+
+    # def bind_ns_employee(self, mobile, user):
+    #     '''
+    #         bind nan sha employee account with bd_account
+    #         do two steps:
+    #             1. add bind record (ns_mobile, user)
+    #             2. modify account's mask(| 1<<16)
+    #     '''
+    #     with Connect(self.dbpool) as conn:
+    #         cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    #         sql = 'select * from bind where weixin="ns_{}" and renter="{}"'.format(mobile, user['user'])
+    #         cur.execute(sql)
+    #         if not cur.fetchone():
+    #             # not existed, add new record
+    #             sql = 'insert into bind (weixin, renter) values("ns_{}", "{}")'.format(mobile, user['user'])
+    #             cur.execute(sql)
+    #         # set user's mask(1<<16), nansha employee flags
+    #         if not (user['mask'] & 1<<16):
+    #             # set 1<<16
+    #             mask = user['mask'] | (1<<16) 
+    #             sql = 'update bd_account set mask = {} where user = "{}"'.format(mask, user['user']) 
+    #             cur.execute(sql)
+    #         conn.commit()
+
+
+
+    # def unbind_ns_employee(self, mobile, user):
+    #     '''
+    #     '''
+    #     with Connect(self.dbpool) as conn:
+    #         cur = conn.cursor(MySQLdb.cursors.DictCursor)
+    #         sql = 'delete from bind where weixin="ns_{}" and renter="{}"'.format(mobile, user)
+    #         cur.execute(sql)
+    #         conn.commit()
+
 
     #**********************************************************
     #
@@ -1340,6 +1407,7 @@ class Store():
             sql = 'select * from ns_notice where id = {}'.format(_id)
             cur.execute(sql)
             return cur.fetchone()
+
 
 # database_config = settings['database_config']
 
