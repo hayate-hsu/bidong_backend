@@ -66,8 +66,8 @@ json_encoder = util.json_encoder
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
-TEMPLATE_PATH = settings['src_path']
-MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
+TEMPLATE_PATH = '/web/portal'
+PAGE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
 OK = {'Code':200, 'Msg':'OK'}
 
@@ -128,12 +128,12 @@ class BaseHandler(tornado.web.RequestHandler):
         override class method to adapt special demands
     '''
     LOOK_UP = mako.lookup.TemplateLookup(directories=[TEMPLATE_PATH, ], 
-                                         module_directory='/tmp/bidong/mako',
+                                         module_directory='/tmp/wnl/mako',
                                          output_encoding='utf-8',
                                          input_encoding='utf-8',
                                          encoding_errors='replace')
-    LOOK_UP_MOBILE = mako.lookup.TemplateLookup(directories=[MOBILE_PATH, ], 
-                                                module_directory='/tmp/bidong/mako_mobile',
+    LOOK_UP_MOBILE = mako.lookup.TemplateLookup(directories=[PAGE_PATH, ], 
+                                                module_directory='/tmp/wnl/mako_mobile',
                                                 output_encoding='utf-8',
                                                 input_encoding='utf-8',
                                                 encoding_errors='replace')
@@ -201,7 +201,7 @@ class BaseHandler(tornado.web.RequestHandler):
         '''
         template = TEMPLATE_PATH
         if self.is_mobile():
-            template = MOBILE_PATH
+            template = PAGE_PATH
         if not os.path.exists(os.path.join(template, filename)):
             raise HTTPError(404, 'File Not Found')
         self.finish(self.render_string(filename, **kwargs))
