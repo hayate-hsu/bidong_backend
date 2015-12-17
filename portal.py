@@ -99,6 +99,9 @@ class Application(tornado.web.Application):
             # pns operator
             (r'/pns/', PNSHandler),
 
+            # check ssid property
+            (r'/ssid/(.*)$', WIFIHandler),
+
             # nansha interface
             # (r'/ns/manager', NSManagerHandler),
             # add/update/delete nansha employee
@@ -735,6 +738,38 @@ class PNSHandler(BaseHandler):
             raise HTTPError(404)
 
         self.render_json_response(pns=pns, **OK)
+
+class WIFIHandler(BaseHandler):
+    '''
+    '''
+    @_trace_wrapper
+    @_parse_body
+    def get(self, ssid):
+        '''
+            check ssid
+                android : mac
+                ios     : ''
+            if ssid belong to bidong system, return 
+            else: 
+        '''
+        # ssid = self.get_argument('ssid')
+        mask = int(self.get_argument('mask'))
+        isys, ispri, record = 0, 0, None
+        if (mask>>6)&1:
+            # android
+            mac = self.get_argument('mac')
+            isys, ispri, record = account.check_ssid(ssid, mac)
+        elif (mask>>7)&1:
+            # ios
+            isys, ispri, record = account.check_ssid(ssid)
+        else:
+            raise HTTPError(400)
+
+        if not record:
+            return self.render_json_response(isys=isys, ispri=ispri)
+        else:
+            record.pop('ispri', 0)
+            return self.render_json_response(isys=isys, ispri=ispri, Code=200, Msg='OK', **record)
 
 
 _DEFAULT_BACKLOG = 128

@@ -123,6 +123,12 @@ def verify_holder(holder, **kwargs):
 def remove_holder(holder):
     db.remove_holder(holder)
 
+#****************************************************************
+# ap 
+# 
+def check_ssid(ssid, mac=None):
+    return db.check_ssid(ssid, mac)
+
 @util.check_codes
 def create_ap(**kwargs):
     '''

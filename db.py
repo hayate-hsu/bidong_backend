@@ -537,6 +537,35 @@ class Store():
             cur.execute(sql)
             conn.commit()
 
+    def check_ssid(self, ssid, mac):
+        '''
+        '''
+        with Cursor(self.dbpool) as cur:
+            if mac:
+                sql = 'select * from holder_ap where mac="{}"'.format(mac)
+                cur.execute(sql)
+                record = cur.fetchone()
+                if not record:
+                    return 0, 0, None
+                # query pn_policy
+                sql = 'select * from pn_policy where pn={} and ssid="{}"'.format(record['pn'], ssid)
+                cur.execute(sql)
+                record = cur.fetchone()
+                if not record:
+                    # can\'t found pn and ssid
+                    # issys ispri
+                    return 1, 0, None
+                return 1, record['ispri'], record
+
+            # found pn with ssid, may not precise
+            sql = 'select * from pn_policy where ssid="{}"'.format(ssid)
+            cur.execute(sql)
+            record = cur.fetchone()
+            if not record:
+                return 0, 0, None
+            return 1, record['ispri'], record
+
+
     def add_ap(self, **kwargs):
         '''
         '''
