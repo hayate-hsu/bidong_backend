@@ -766,7 +766,7 @@ class WIFIHandler(BaseHandler):
             raise HTTPError(400)
 
         if not record:
-            return self.render_json_response(isys=isys, ispri=ispri)
+            return self.render_json_response(isys=isys, ispri=ispri, Code=200, Msg='OK')
         else:
             record.pop('ispri', 0)
             return self.render_json_response(isys=isys, ispri=ispri, Code=200, Msg='OK', **record)
