@@ -388,6 +388,9 @@ def bind_avaiable_pns(user, mobile):
     '''
     return db.bind_avaiable_pns(user, mobile)
 
+def get_pns():
+    return db.get_pns()
+
 def create_pn(**kwargs):
     '''
         user create private network with special ssid

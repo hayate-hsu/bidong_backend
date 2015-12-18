@@ -541,29 +541,21 @@ class Store():
         '''
         '''
         with Cursor(self.dbpool) as cur:
-            if mac:
-                sql = 'select * from holder_ap where mac="{}"'.format(mac)
-                cur.execute(sql)
-                record = cur.fetchone()
-                if not record:
-                    return 0, 0, None
-                # query pn_policy
-                sql = 'select * from pn_policy where pn={} and ssid="{}"'.format(record['pn'], ssid)
-                cur.execute(sql)
-                record = cur.fetchone()
-                if not record:
-                    # can\'t found pn and ssid
-                    # issys ispri
-                    return 1, 0, None
-                return 1, record['ispri'], record
-
-            # found pn with ssid, may not precise
-            sql = 'select * from pn_policy where ssid="{}"'.format(ssid)
+            mac = mac[:]
+            sql = 'select * from holder_ap where mac like "{}%"'.format(mac[:-2])
             cur.execute(sql)
             record = cur.fetchone()
             if not record:
-                return 0, 0, None
-            return 1, record['ispri'], record
+                return 0, None
+            # query pn_policy
+            sql = 'select * from pn_policy where pn={} and ssid="{}"'.format(record['holder'], ssid)
+            cur.execute(sql)
+            record = cur.fetchone()
+            if not record:
+                # can\'t found pn and ssid
+                # issys ispri
+                return 1, None
+            return 1, record
 
 
     def add_ap(self, **kwargs):
@@ -1242,6 +1234,13 @@ class Store():
 
             conn.commit()
             return results
+
+    def get_pns(self):
+        with Cursor(self.dbpool) as cur:
+            sql = 'select * from pn_policy'
+            cur.execute(sql)
+            return cur.fetchall()
+
 
     def create_pn(self, **kwargs):
         '''

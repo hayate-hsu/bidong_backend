@@ -60,7 +60,6 @@ _now = util.now
 import settings
 
 import account
-import _const
 
 json_encoder = util.json_encoder
 json_decoder = util.json_decoder
@@ -70,6 +69,8 @@ TEMPLATE_PATH = '/web/portal'
 PAGE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
 OK = {'Code':200, 'Msg':'OK'}
+
+PN_POLICY = {}
 
 class Application(tornado.web.Application):
     '''
@@ -713,11 +714,7 @@ class PNSHandler(BaseHandler):
         '''
             query pns which user can access
         '''
-        mobile = self.get_argument('mobile')
-        pns = account.query_avaiable_pns(mobile)
-
-        if not pns:
-            raise HTTPError(404)
+        pns = account.get_pns()
 
         self.render_json_response(pns=pns, **OK)
 
@@ -746,31 +743,14 @@ class WIFIHandler(BaseHandler):
     @_parse_body
     def get(self, ssid):
         '''
-            check ssid
-                android : mac
-                ios     : ''
-            if ssid belong to bidong system, return 
-            else: 
         '''
-        # ssid = self.get_argument('ssid')
-        mask = int(self.get_argument('mask'))
-        isys, ispri, record = 0, 0, None
-        if (mask>>6)&1:
-            # android
-            mac = self.get_argument('mac')
-            isys, ispri, record = account.check_ssid(ssid, mac)
-        elif (mask>>7)&1:
-            # ios
-            isys, ispri, record = account.check_ssid(ssid)
-        else:
-            raise HTTPError(400)
+        mac = self.get_argument('mac').upper()
+        isys, record = account.check_ssid(ssid, mac)
 
         if not record:
-            return self.render_json_response(isys=isys, ispri=ispri, Code=200, Msg='OK')
+            return self.render_json_response(isys=isys, ispri=0, Code=200, Msg='OK')
         else:
-            record.pop('ispri', 0)
-            return self.render_json_response(isys=isys, ispri=ispri, Code=200, Msg='OK', **record)
-
+            return self.render_json_response(isys=isys, Code=200, Msg='OK', **record)
 
 _DEFAULT_BACKLOG = 128
 # These errnos indicate that a non-blocking operation must be retried
