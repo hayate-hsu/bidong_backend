@@ -48,7 +48,8 @@ class My_JSONEncoder2(json.JSONEncoder):
         if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
             return obj.strftime('%Y-%m-%d')
         else:
-            return super(json.JSONEncoder, self).default(obj) 
+            return super(json.JSONEncoder, self).default(obj)
+        
 
 json_encoder = My_JSONEncoder(ensure_ascii=False).encode
 json_encoder2 = My_JSONEncoder2(ensure_ascii=False).encode

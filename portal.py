@@ -68,6 +68,7 @@ CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
 TEMPLATE_PATH = '/www/portal'
 PAGE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
+
 OK = {'Code':200, 'Msg':'OK'}
 
 PN_POLICY = {}
