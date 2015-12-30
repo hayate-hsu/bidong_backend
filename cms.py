@@ -64,6 +64,7 @@ import manage
 import ueditor_config
 
 json_encoder = util.json_encoder
+json_encoder2 = util.json_encoder2
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -703,6 +704,24 @@ class MessageHandler(BaseHandler):
             push to app notices (use subtitle)
             recruit
     '''
+    def render_messages(self, **kwargs):
+        '''
+            Encode dict and return response to client
+        '''
+        # self.set_header('Access-Control-Allow-Origin', '*')
+        origin = self.request.headers.get('Origin', '')
+        if origin and origin in settings['sites']:
+            self.set_header('Access-Control-Allow-Origin', origin)
+        callback = self.get_argument('callback', None)
+        # check should return jsonp
+        if callback:
+            self.set_status(200, kwargs.get('Msg', None))
+            self.finish('{}({})'.format(callback, json_encoder2(kwargs)))
+        else:
+            self.set_status(kwargs['Code'], kwargs.get('Msg', None))
+            self.set_header('Content-Type', 'application/json')
+            self.finish(json_encoder(kwargs))
+
     def render_message_response(self, message):
         '''
             return html|json based on the Accept contents
@@ -755,7 +774,8 @@ class MessageHandler(BaseHandler):
         messages = manage.get_messages(groups, mask, isimg, gmtype, label, pos, nums)
         isEnd = 1 if len(messages) < nums else 0
 
-        self.render_json_response(Code=200, Msg='OK', messages=messages, end=isEnd)
+        # self.render_json_response(Code=200, Msg='OK', messages=messages, end=isEnd)
+        self.render_messages(Code=200, Msg='OK', messages=messages, end=isEnd)
 
     @_trace_wrapper
     @_parse_body

@@ -40,7 +40,18 @@ class My_JSONEncoder(json.JSONEncoder):
         else:
             return super(json.JSONEncoder, self).default(obj)
 
+class My_JSONEncoder2(json.JSONEncoder):
+    '''
+        serial date & datetime type data
+    '''
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
+            return obj.strftime('%Y-%m-%d')
+        else:
+            return super(json.JSONEncoder, self).default(obj) 
+
 json_encoder = My_JSONEncoder(ensure_ascii=False).encode
+json_encoder2 = My_JSONEncoder2(ensure_ascii=False).encode
 json_decoder = json.JSONDecoder().decode
 
 def check_codes(method):
