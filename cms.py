@@ -721,7 +721,7 @@ class MessageHandler(BaseHandler):
         else:
             self.set_status(kwargs['Code'], kwargs.get('Msg', None))
             self.set_header('Content-Type', 'application/json')
-            self.finish(json_encoder(kwargs))
+            self.finish(json_encoder2(kwargs))
 
     def render_message_response(self, message):
         '''
