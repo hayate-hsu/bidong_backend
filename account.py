@@ -74,19 +74,6 @@ def create_group(name, note):
 def get_manager(user):
     return db.get_manager(user)
 
-# def registe(mac, mask):
-#     # check user has been registed?
-#     _id = ''
-#     account = db.get_user(mac, mask)
-#     if not account:
-#         # check mac address login history
-#         # create account
-#         account = db.get_user_by_mac(mac)
-#         if not account:
-#             _id = db.add_user(mac, util.generate_password(), mask)
-# 
-#     return _id or account['id']
-
 @util.check_codes
 def create_holder(weixin, mobile, address, realname, portal='login.html', billing=0):
     '''
@@ -193,12 +180,11 @@ def get_renters(holder):
     bd_account['mobile'] = account['mobile']
     return bd_account, renters
 
-# def get_account(id, mask):
-#     account = db.get_user_by_id(id)
-#     return account
-
 def get_account(**kwargs):
-    return db.get_account(**kwargs)
+    user = db.get_account(**kwargs)
+    if not user:
+        user = db.get_account2(**kwargs)
+    return user
 
 def remove_account(user, mask=1):
     '''
@@ -213,6 +199,8 @@ def remove_account(user, mask=1):
 
 def get_bd_account(user, fields=('user', 'mask', 'ends', 'expire_date', 'coin')):
     account = db.get_bd_user(user)
+    if not account:
+        account = db.get_bd_user2(user)
     return account
 
 def create_weixin_account(openid):
@@ -223,6 +211,9 @@ def create_weixin_account(openid):
     '''
     account = db.get_user(openid)
     if not account:
+        account = db.get_user2(openid)
+
+    if not account:
         # create account
         db.add_user(openid, util.generate_password())
     else:
@@ -232,13 +223,21 @@ def create_weixin_account(openid):
 
 def remove_weixin_account(openid):
     account = db.get_user(openid)
+    if not account:
+        account = db.get_user2(openid)
+
     if account:
         account['mask'] = account['mask'] | 1<<28
         db.update_user(openid, account)
 
 def get_weixin_account(openid):
     account = db.get_user(openid)
+    if not account:
+        account = db.get_user2(openid)
+
     _user = db.get_bd_user(str(account['id']))
+    if not _user:
+        _user = db.get_bd_user2(str(account['id']))
     return _user
 
 def update_account(user, **kwargs):

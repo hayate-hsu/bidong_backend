@@ -381,6 +381,17 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
+    def get_account2(self, **kwargs):
+        with Connect(self.dbpool) as conn:
+            conn.commit()
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            query_str = self._combine_query_kwargs(**kwargs)
+            sql = 'select * from account where {}'.format(query_str)
+            cur.execute(sql)
+            return cur.fetchone()
+
+
+
     def add_holder(self, weixin, password, mobile, expire_date,
                       email='', address='', realname='', portal='login.html', billing=0):
         '''
@@ -865,12 +876,23 @@ class Store():
         with Cursor(self.dbpool) as cur:
             # default from weixin
             column = 'weixin'
-            if ends & 1<<6:
-                # from app
+            if (ends & 1<<6) or (ends & 1<<7):
                 column = 'uuid'
             cur.execute('select * from account where {} = "{}"'.format(column, user))
             user = cur.fetchone()
             return user
+
+    def get_user2(self, user, ends=1<<5):
+        with Connect(self.dbpool) as conn:
+            conn.commit()
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            column = 'weixin'
+            if (ends & 1<<6) or (ends & 1<<7):
+                column = 'uuid'
+            cur.execute('select * from account where {} = "{}"'.format(column, user))
+            user = cur.fetchone()
+            return user
+
 
     def get_user_by_id(self, id):
         with Cursor(self.dbpool) as cur:
@@ -905,10 +927,7 @@ class Store():
     def get_bd_user(self, user):
         '''
         '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            conn.commit()
-        # with Cursor(self.dbpool) as cur:
+        with Cursor(self.dbpool) as cur:
             cur.execute('select * from bd_account where user = "{}"'.format(user))
             user = cur.fetchone()
             if user and user['mask'] & 1<<5:
@@ -924,6 +943,28 @@ class Store():
                         user['expire_date'] = ret['expire_date']
             return user
 
+    def get_bd_user2(self, user):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            conn.commit()
+            cur.execute('select * from bd_account where user = "{}"'.format(user))
+            user = cur.fetchone()
+            if user and user['mask'] & 1<<5:
+                # query weixin account binded renter
+                sql = 'select * from bind where weixin = "{}"'.format(user)
+                cur.execute(sql)
+                record = cur.fetchone()
+                if record:
+                    sql = 'select expire_date from bd_account where user = "{}"'.format(record['renter'])
+                    cur.execute(sql)
+                    ret = cur.fetchone()
+                    if ret:
+                        user['expire_date'] = ret['expire_date']
+            return user
+
+
     def get_bd_user_by_mac(self, user_mac):
         with Cursor(self.dbpool) as cur:
             sql = '''select bd_account.*, online.mac_addr from bd_account, 
@@ -932,12 +973,6 @@ class Store():
             cur.execute(sql)
             user = cur.fetchone()
             return user
-
-    def get_block_user(self, mac):
-        '''
-            mac : mac address
-        '''
-        pass
 
     def is_online(self, nas_addr, acct_session_id):
         '''

@@ -773,6 +773,7 @@ class MessageHandler(BaseHandler):
         pos = page*nums
 
         messages = manage.get_messages(groups, mask, isimg, gmtype, label, pos, nums)
+        logger.info('messages: {}'.format(messages[0]['image']))
         isEnd = 1 if len(messages) < nums else 0
 
         # self.render_json_response(Code=200, Msg='OK', messages=messages, end=isEnd)
@@ -903,7 +904,7 @@ class ImageHandler(BaseHandler):
                     filename = '.'.join([filename, ext])
             else:
                 filename = _id
-            filepath = os.path.join(UPLOAD_IMAGE_PATH, filename)
+            filepath = os.path.join(UPLOAD_IMAGE_PATH, filename.lower())
             with open(filepath, 'wb') as uf:
                 uf.write(meta['body'])
             break
