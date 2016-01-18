@@ -396,9 +396,9 @@ class WeiXinViewHandler(BaseHandler):
     '''
     WEIXIN_CONFIG = settings['weixin']
     _WX_IP = 'api.weixin.qq.com'
-    for family,type,proto,canonname,sockaddr in socket.getaddrinfo('api.weixin.qq.com', None, socket.AF_INET, 0, socket.SOL_TCP):
-        _WX_IP = sockaddr[0]
-        break
+    # for family,type,proto,canonname,sockaddr in socket.getaddrinfo('api.weixin.qq.com', None, socket.AF_INET, 0, socket.SOL_TCP):
+    #     _WX_IP = sockaddr[0]
+    #     break
     URL = ''.join(['https://', _WX_IP, '/sns/oauth2/access_token?appid={}&secret={}&code={}&grant_type=authorization_code'])
 
     _ACTION = ['onttonet', 'earn_coin', 'join_us']
@@ -490,9 +490,9 @@ class WeiXinHandler(BaseHandler):
     # weixin open account's info
     WEIXIN_CONFIG = settings['weixin']
     _WX_IP = 'api.weixin.qq.com'
-    for family,type,proto,canonname,sockaddr in socket.getaddrinfo('api.weixin.qq.com', None, socket.AF_INET, 0, socket.SOL_TCP):
-        _WX_IP = sockaddr[0]
-        break
+    # for family,type,proto,canonname,sockaddr in socket.getaddrinfo('api.weixin.qq.com', None, socket.AF_INET, 0, socket.SOL_TCP):
+    #     _WX_IP = sockaddr[0]
+    #     break
     WEIXIN_CONFIG = settings['weixin']
     BASE_URL = 'https://api/{}/cgi-bin'.format(_WX_IP)
     URLS = {
@@ -1149,7 +1149,6 @@ class HolderHandler(AccountBaseHandler):
         # get renters
         _user, renters = account.get_renters(holder)
         _user.pop('possword', '')
-        logger.info('test: {}'.format(self.request))
 
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
