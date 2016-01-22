@@ -79,6 +79,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r'/', IMHandler),
+            (r'/notify', NotifyHandler),
         ]
         settings = {
             'cookie_secret':util.sha1('ims').hexdigest(), 
@@ -112,6 +113,13 @@ class BaseHandler(tornado.web.RequestHandler):
 
     RESPONSES = {}
     RESPONSES.update(tornado.httputil.responses)
+
+    _IM_DISPATER = None
+    @classmethod
+    def __im__(cls):
+        if not cls._IM_DISPATER:
+            cls._IM_DISPATER = imapi.APIClient(mas['ip'], mas['user'], mas['password'], mas['code'])
+        return cls._IM_DISPATER
 
     def initialize(self):
         '''
@@ -304,19 +312,6 @@ def _trace_wrapper(method):
 class IMHandler(BaseHandler):
     '''
     '''
-    _IM_DISPATER = None
-
-    @classmethod
-    def __im__(cls):
-        if not cls._IM_DISPATER:
-            cls._IM_DISPATER = imapi.APIClient(mas['ip'], mas['user'], mas['password'], mas['code'])
-        return cls._IM_DISPATER
-
-    # @_trace_wrapper
-    # @_parse_body
-    # def get(self):
-    #     pass
-
     @_trace_wrapper
     @_parse_body
     def post(self):
@@ -326,7 +321,21 @@ class IMHandler(BaseHandler):
         try:
             im.send_sm(mobile, _const['msg_template'].format(code))
         except:
-            app_log.info('im: {}, {}'.format(im, dir(im))) 
+            traceback.print_exc()
+            self.render_json_response(Code=400, Msg='Send message failed')
+        else:
+            self.render_json_response(**OK)
+
+class NotifyHandler(BaseHandler):
+    @_trace_wrapper
+    @_parse_body
+    def post(self):
+        mobile = self.get_argument('mobile')
+        msg = self.get_argument('msg')
+        im = self.__im__()
+        try:
+            im.send_sm(mobile, msg)
+        except:
             traceback.print_exc()
             self.render_json_response(Code=400, Msg='Send message failed')
         else:
