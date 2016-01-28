@@ -717,11 +717,11 @@ class MessageHandler(BaseHandler):
         # check should return jsonp
         if callback:
             self.set_status(200, kwargs.get('Msg', None))
-            self.finish('{}({})'.format(callback, json_encoder2(kwargs)))
+            self.finish('{}({})'.format(callback, json_encoder(kwargs)))
         else:
             self.set_status(kwargs['Code'], kwargs.get('Msg', None))
             self.set_header('Content-Type', 'application/json')
-            self.finish(json_encoder2(kwargs))
+            self.finish(json_encoder(kwargs))
 
     def render_message_response(self, message):
         '''
