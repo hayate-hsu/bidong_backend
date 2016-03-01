@@ -633,13 +633,13 @@ class AccountHandler(BaseHandler):
         '''
         user = self.get_argument('manager')
         password = self.get_argument('password')
+        password = util.md5(password).hexdigest()
 
-        _user = manage.get_manager(user)
+        _user = manage.get_manager(user, password)
         if not _user:
             raise HTTPError(404, reason='can\'t found account')
-        password = util.md5(password).hexdigest()
-        if password != _user['password']:
-            raise HTTPError(403, reason='password error')
+        # if password != _user['password']:
+        #     raise HTTPError(403, reason='password error')
 
         token = util.token(user)
 

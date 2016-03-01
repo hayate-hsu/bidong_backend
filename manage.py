@@ -130,8 +130,8 @@ def update_manager(user, **kwargs):
 def delete_manager(user):
     db.delete_manager(user)
 
-def get_manager(user):
-    manager = db.get_manager(user)
+def get_manager(user, password=''):
+    manager = db.get_manager(user, password)
     # if manager:
     #     manager['password'] = util.md5(manager['password']).hexdigest()
     return manager

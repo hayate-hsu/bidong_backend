@@ -213,9 +213,12 @@ class Store():
             cur.execute(sql)
             conn.commit()
 
-    def get_manager(self, user):
+    def get_manager(self, user, password):
         with Cursor(self.dbpool) as cur:
-            sql = 'select * from manager where user = "{}"'.format(user)
+            if password:
+                sql = 'select * from manager where user = "{}", password="{}"'.format(user, password)
+            else:
+                sql = 'select * from manager where user = "{}"'.format(user)
             cur.execute(sql)
             return cur.fetchone()
 
