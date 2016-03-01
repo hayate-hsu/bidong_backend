@@ -637,6 +637,7 @@ class AccountHandler(BaseHandler):
         _user = manage.get_manager(user)
         if not _user:
             raise HTTPError(404, reason='can\'t found account')
+        password = util.md5(password).hexdigest()
         if password != _user['password']:
             raise HTTPError(403, reason='password error')
 
