@@ -71,8 +71,12 @@ def create_group(name, note):
     except IntegrityError:
         raise HTTPError(409, reason='name has been existed')
 
-def get_manager(user):
-    return db.get_manager(user)
+# def get_manager(user):
+def get_manager(user, password=''):
+    manager = db.get_manager(user, password)
+    # if manager:
+    #     manager['password'] = util.md5(manager['password']).hexdigest()
+    return manager
 
 @util.check_codes
 def create_holder(weixin, mobile, address, realname, portal='login.html', billing=0):

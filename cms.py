@@ -633,7 +633,6 @@ class AccountHandler(BaseHandler):
         '''
         user = self.get_argument('manager')
         password = self.get_argument('password')
-        password = util.md5(password).hexdigest()
 
         _user = manage.get_manager(user, password)
         if not _user:

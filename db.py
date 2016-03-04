@@ -216,7 +216,7 @@ class Store():
     def get_manager(self, user, password):
         with Cursor(self.dbpool) as cur:
             if password:
-                sql = 'select * from manager where user = "{}", password="{}"'.format(user, password)
+                sql = 'select * from manager where user = "{}" and password="{}"'.format(user, password)
             else:
                 sql = 'select * from manager where user = "{}"'.format(user)
             cur.execute(sql)
