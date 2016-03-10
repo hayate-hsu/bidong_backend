@@ -1240,7 +1240,7 @@ class Store():
         '''
         '''
         with Cursor(self.dbpool) as cur:
-            cur.execute('select pn from pn_policy where ispri = 1')
+            cur.execute('select * from pn_policy where ispri = 1')
             pns = cur.fetchall()
             cur.execute('select table_name from information_schema.tables where table_name like "pn__%"')
             tables = cur.fetchall()
@@ -1248,11 +1248,11 @@ class Store():
             tables = [item['table_name'] for item in tables]
 
             # existed pn_***** tables
-            pns = [item['pn'] for item in pns if 'pn_{}'.format(item['pn']) in tables]
+            pns = [item for item in pns if 'pn_{}'.format(item['pn']) in tables]
             
             results = []
             for item in pns:
-                sql = 'select id from pn_{} where mobile = "{}"'.format(item, mobile)
+                sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
                 cur.execute(sql)
                 if cur.fetchone():
                     results.append(item)
@@ -1266,25 +1266,25 @@ class Store():
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             results = []
 
-            cur.execute('select pn from pn_policy where ispri = 1')
+            cur.execute('select * from pn_policy where ispri = 1')
             pns = cur.fetchall()
             cur.execute('select table_name from information_schema.tables where table_name like "pn_%"')
             tables = cur.fetchall()
 
             tables = [item['table_name'] for item in tables]
 
-            pns = [item['pn'] for item in pns if 'pn_{}'.format(item['pn']) in tables]
+            pns = [item for item in pns if 'pn_{}'.format(item['pn']) in tables]
 
 
             for item in pns:
-                sql = 'select id from pn_{} where mobile = "{}"'.format(item, mobile)
+                sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
                 cur.execute(sql)
                 if cur.fetchone():
                     results.append(item)
 
             if results:
                 for item in results:
-                    sql = 'insert into pn_bind(user, holder, mobile) values("{}", {}, "{}")'.format(user, item, mobile)
+                    sql = 'insert into pn_bind(user, holder, mobile) values("{}", {}, "{}")'.format(user, item['pn'], mobile)
                     try:
                         cur.execute(sql)
                     except MySQLdb.IntegrityError:
