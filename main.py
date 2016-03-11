@@ -59,7 +59,9 @@ import settings
 import account
 import _const
 
-json_encoder = util.json_encoder
+
+# json_encoder2 : serial datetime&date to string
+json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))

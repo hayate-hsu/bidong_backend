@@ -63,8 +63,8 @@ import settings
 import manage
 import ueditor_config
 
-json_encoder = util.json_encoder
-json_encoder2 = util.json_encoder2
+# json_encoder = util.json_encoder
+json_encoder = util.json_encoder2
 
 json_decoder = util.json_decoder
 

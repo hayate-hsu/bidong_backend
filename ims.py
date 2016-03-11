@@ -62,7 +62,7 @@ mas = settings['mas']
 import imapi
 import _const
 
-json_encoder = util.json_encoder
+json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
@@ -334,7 +334,7 @@ class NotifyHandler(BaseHandler):
         msg = self.get_argument('msg')
         im = self.__im__()
         try:
-            im.send_sm(mobile, msg)
+            im.send_sm(mobile, msg.encode('utf-8'))
         except:
             traceback.print_exc()
             self.render_json_response(Code=400, Msg='Send message failed')

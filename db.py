@@ -759,7 +759,10 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            now = datetime.datetime.now()
+            expired = datetime.timedelta(hours=6)
+            now = now.strftime('%Y-%m-%d %H:%M:%S')
+            expired = expired.strftime('%Y-%m-%d %H:%M:%S')
             sql = ''
             column = 'uuid'
             mask = 0 + 2**2 + 2**5
@@ -788,9 +791,9 @@ class Store():
             # mask = mask + 2**9
             coin = 60
 
-            sql = '''insert into bd_account (user, password, mask, coin, holder, ends) 
-            values("{}", "{}", {}, {}, 0, 5)
-            '''.format(str(user['id']), password, mask, coin)
+            sql = '''insert into bd_account (user, password, mask, coin, expire_date, holder, ends) 
+            values("{}", "{}", {}, {}, "{}", 0, 2)
+            '''.format(str(user['id']), password, mask, coin, expired)
             cur.execute(sql)
             conn.commit()
             return user['id']# , password, mask, time_length
