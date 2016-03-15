@@ -87,8 +87,9 @@ def create_holder(weixin, mobile, address, realname, portal='login.html', billin
             1 : free
     '''
     password = util.generate_password()
-    # now = util.now('%Y-%m-%d')
-    _id = db.add_holder(weixin, password, mobile, '', 
+    now = util.now('%Y-%m-%d %H:%M:%S')
+
+    _id = db.add_holder(weixin, password, mobile, now, 
                         address=address, realname=realname, 
                         portal=portal, billing=billing)
     return _id
@@ -158,8 +159,11 @@ def get_aps(field, query):
 def get_holder_by_mac(mac_addr):
     return db.get_holder_by_mac()
 
-def create_renters(holder, expire_date, rooms):
-    db.add_holder_rooms(holder, expire_date, rooms)
+def create_renters(holder, expired, rooms):
+    '''
+        expired : %Y-%m-%d %H:%M:%S
+    '''
+    db.add_holder_rooms(holder, expired, rooms)
 
 def update_renters(holder, rooms):
     db.update_renters(holder, rooms)
@@ -185,10 +189,7 @@ def get_renters(holder):
     return bd_account, renters
 
 def get_account(**kwargs):
-    user = db.get_account(**kwargs)
-    if not user:
-        user = db.get_account2(**kwargs)
-    return user
+    return db.get_account(**kwargs) or db.get_account2(**kwargs)
 
 def remove_account(user, mask=1):
     '''
@@ -201,11 +202,8 @@ def remove_account(user, mask=1):
     else:
         db.remove_mac_history(user)
 
-def get_bd_account(user, fields=('user', 'mask', 'ends', 'expire_date', 'coin')):
-    account = db.get_bd_user(user)
-    if not account:
-        account = db.get_bd_user2(user)
-    return account
+def get_bd_account(user, fields=('user', 'mask', 'ends', 'expired', 'coin')):
+    return db.get_bd_user(user) or db.get_bd_user2(user)
 
 def create_weixin_account(openid):
     '''
@@ -319,17 +317,12 @@ def trade(user, coins=0, days=0):
     if days:
         expire = ''
         now = datetime.datetime.now()
-        now.replace()
-        if not user['expire_date']:
+        # expire_date < now?
+        if user['expired'] < now:
             expire = now + datetime.timedelta(days=days)
         else:
-            # expire_date < now?
-            old_expire = datetime.strptime('%Y-%d-%m %H:%M:%S', user['expire_date'] + ' 23:59:59')
-            if old_expire < now:
-                expire = now + datetime.timedelta(days=days)
-            else:
-                expire = old_expire + datetime.timedelta(days=days)
-        kwargs['expire_date'] = expire.strftime('%Y-%d-%m')
+            expire = user['expired'] + datetime.timedelta(days=days)
+        kwargs['expired'] = expire
     db.update_user2(user, **kwargs)
 
 def untrade(user, billing):

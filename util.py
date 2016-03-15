@@ -46,7 +46,7 @@ class My_JSONEncoder2(json.JSONEncoder):
     '''
     def default(self, obj):
         if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
-            return obj.strftime('%Y-%m-%d')
+            return obj.strftime('%Y-%m-%d %H:%M:%S')
         else:
             return super(json.JSONEncoder, self).default(obj)
         
@@ -196,12 +196,14 @@ class PKCS7Encoder():
         pad = int(hexlify(text[-1]))
         return text[:-pad]
 
-def format_left_time(expire_date, coin):
+def format_left_time(expired, coin):
+    '''
+    expired : datetime %Y-%m-%d %H:%M:%S
+    '''
     days, hours = 0,'00:00'
     # check current data
-    if expire_date:
-        _expire_datetime = datetime.datetime.strptime(expire_date, '%Y-%m-%d')
-        delta = _expire_datetime - datetime.datetime.now()
+    if expired:
+        delta = expired - datetime.datetime.now()
         days = delta.days
         if days < 0:
             days = 0

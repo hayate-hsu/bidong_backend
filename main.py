@@ -448,7 +448,6 @@ class WeiXinViewHandler(BaseHandler):
         if not _user:
             raise HTTPError(404, reason='account not existed')
 
-        # days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
         token = util.token(_user['user'])
         self.redirect('/account/{}?token={}'.format(_user['user'], token))
 
@@ -568,9 +567,8 @@ class WeiXinHandler(BaseHandler):
         '''
         days, hours = 0,'00:00'
         # check current data
-        if user['expire_date']:
-            _expire_datetime = datetime.datetime.strptime(user['expire_date'], '%Y-%m-%d')
-            delta = _expire_datetime - datetime.datetime.now()
+        if user['expired']:
+            delta = user['expired'] - datetime.datetime.now()
             days = delta.days
             if days < 0:
                 days = 0
@@ -713,7 +711,7 @@ class ManagerHandler(AccountBaseHandler):
 
                     if _id:
                         # verify holder
-                        account.verify_holder(_id, expire_date=holder['expire_date'], mask=3, verify=1)
+                        account.verify_holder(_id, expired=holder['expired'], mask=3, verify=1)
                         ids.append(_id)
             elif action == 'ap':
                 aps = self.get_argument('aps', [])
@@ -912,7 +910,7 @@ class FactoryHandler(AccountBaseHandler):
         if not _user:
             raise HTTPError(404, reason='account not existed')
 
-        days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
+        days, hours = util.format_left_time(_user['expired'], _user['coin'])
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, **OK)
@@ -935,7 +933,7 @@ class AccountHandler(AccountBaseHandler):
         if not _user:
             raise HTTPError(404, reason='account not existed')
 
-        days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
+        days, hours = util.format_left_time(_user['expired'], _user['coin'])
 
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
@@ -1116,7 +1114,7 @@ class BindHandler(AccountHandler):
         
         account.bind(user, room)
         _user = account.get_bd_account(user)
-        days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
+        days, hours = util.format_left_time(_user['expired'], _user['coin'])
         self.render_json_response(days=days, hours=hours, **OK)
 
     def unbind_room(self, user):
@@ -1199,7 +1197,7 @@ class HolderHandler(AccountBaseHandler):
         fields['address'] = self.get_argument('address')
         fields['realname'] = self.get_argument('realname')
         # fields['email'] = self.get_argument('email', '')
-        fields['expire_date'] = self.get_argument('expire_date')
+        fields['expired'] = self.get_argument('expired')
         fields['mask'] = int(self.get_argument('mask')) | 1
 
         account.verify_holder(int(holder), **fields)
@@ -1270,8 +1268,8 @@ class RoomHandler(AccountBaseHandler):
         self.check_holder(holder)
         rooms = self.get_arguments('rooms')
         rooms = [(room, util.generate_password()) for room in rooms]
-        expire_date = self.get_argument('expire_date')
-        account.create_renters(holder, expire_date, rooms)
+        expired = self.get_argument('expired')
+        account.create_renters(holder, expired, rooms)
         self.render_json_response(Code=200, Msg='Create room account successfully')
 
     @_trace_wrapper
@@ -1279,7 +1277,7 @@ class RoomHandler(AccountBaseHandler):
     def put(self, holder):
         '''
             Update renter account info
-            {room:{password:'', expire_date:'', ends:num}}
+            {room:{password:'', expired:'', ends:num}}
         '''
         token = self.get_argument('token')
         self.check_token(holder, token)
