@@ -760,7 +760,7 @@ class Store():
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             now = datetime.datetime.now()
-            expired = datetime.timedelta(hours=6)
+            expired = now + datetime.timedelta(hours=6)
             now = now.strftime('%Y-%m-%d %H:%M:%S')
             expired = expired.strftime('%Y-%m-%d %H:%M:%S')
             sql = ''
