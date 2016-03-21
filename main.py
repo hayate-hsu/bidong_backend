@@ -423,12 +423,13 @@ class WeiXinViewHandler(BaseHandler):
         if not code:
             # user forbid
             pass
-        url = self.URL.format(serve, configure['secret'], code)
+        url = self.URL.format(configure['appid'], configure['secret'], code)
         client = tornado.httpclient.AsyncHTTPClient()
         # client = tornado.httpclient.HTTPClient()
         response = yield client.fetch(url, allow_nonstandard_methods=True)
 
         if response.error:
+            logger.info('error: {}'.format(response.body))
             response.rethrow()
         
         result = json_decoder(response.body)
@@ -465,6 +466,7 @@ class WeiXinViewHandler(BaseHandler):
 
         self.redirect('/holder/{}?token={}'.format(_user['user'], token))
 
+    @_trace_wrapper
     def _check_weixin_account(self, appid, openid):
         # _user = account.get_account_by_openid(openid)
         _user = account.get_account(appid=appid, weixin=openid)
@@ -485,8 +487,9 @@ class WeiXinViewHandler(BaseHandler):
         token = util.token(str(_user['id']))
         self.redirect('/getdbi.html?user={}&token={}'.format(_user['id'], token))
 
-    def join_us(self, serve, openid):
-        self.render('joinus.html', appid=serve, Openid=openid)
+    @_trace_wrapper
+    def join_us(self, appid, openid):
+        self.render('joinus.html', appid=appid, Openid=openid)
 
 class WeiXinHandler(BaseHandler):
     '''
