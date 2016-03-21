@@ -81,13 +81,13 @@ class Application(tornado.web.Application):
             (r'/account/(.*)/merge', MergeHandler),
             (r'/account/(.*)/$', AccountHistoryHandler),
             (r'/account/?(.*)$', AccountHandler),
-            (r'/m_web/(.*)', WeiXinViewHandler),
+            (r'/wx/m_(.*)/(.*)', WeiXinViewHandler),
+            (r'/wx/?(.*)$', WeiXinHandler),
             (r'/(getdbi)\.html', FactoryHandler),
             (r'/(.*?\.html)$', PageHandler),
             # in product environment, use nginx to support static resources
             # (r'/(.*\.(?:css|jpg|png|js|ico|json))$', tornado.web.StaticFileHandler, 
             #  {'path':TEMPLATE_PATH}),
-            (r'/weixin$', WeiXinHandler),
             (r'/holder/(.*)/ap$', APHandler),
             (r'/holder/(.*)/room$', RoomHandler),
             (r'/holder/?(.*)$', HolderHandler),
@@ -395,13 +395,12 @@ def create_menu():
 class WeiXinViewHandler(BaseHandler):
     '''
         /m_web/(.*)
+        /wx/m_weixin_serve/(.*)
     '''
     WEIXIN_CONFIG = settings['weixin']
-    _WX_IP = 'api.weixin.qq.com'
-    # for family,type,proto,canonname,sockaddr in socket.getaddrinfo('api.weixin.qq.com', None, socket.AF_INET, 0, socket.SOL_TCP):
-    #     _WX_IP = sockaddr[0]
-    #     break
-    URL = ''.join(['https://', _WX_IP, '/sns/oauth2/access_token?appid={}&secret={}&code={}&grant_type=authorization_code'])
+    # _WX_IP = 'api.weixin.qq.com'
+
+    URL = ''.join(['https://', settings['wx_api'], '/sns/oauth2/access_token?appid={}&secret={}&code={}&grant_type=authorization_code'])
 
     _ACTION = ['onttonet', 'earn_coin', 'join_us']
 
@@ -415,29 +414,30 @@ class WeiXinViewHandler(BaseHandler):
 
     @_trace_wrapper
     @tornado.gen.coroutine
-    def get(self, action=None):
+    def get(self, serve='bidong', action=None):
         '''
         '''
         print(self.request)
+        configure = self.WEIXIN_CONFIG.getattr(serve)
         code = self.get_argument('code', '')
         if not code:
             # user forbid
             pass
-        url = self.URL.format(self.WEIXIN_CONFIG['appid'], self.WEIXIN_CONFIG['secret'], code)
+        url = self.URL.format(serve, configure['secret'], code)
         client = tornado.httpclient.AsyncHTTPClient()
         # client = tornado.httpclient.HTTPClient()
         response = yield client.fetch(url, allow_nonstandard_methods=True)
         
         result = json_decoder(response.body)
 
-        self._check_weixin_account(result['openid'])
+        self._check_weixin_account(serve, result['openid'])
 
-        self.dispatch[action](result['openid'])
+        self.dispatch[action](serve, result['openid'])
 
 
-    def auto_login(self, openid):
+    def auto_login(self, serve, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(weixin=openid)
+        _user = account.get_account(appid=serve, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
         # if not _user['mask']>>1 & 1:
@@ -451,9 +451,9 @@ class WeiXinViewHandler(BaseHandler):
         token = util.token(_user['user'])
         self.redirect('/account/{}?token={}'.format(_user['user'], token))
 
-    def get_holder(self, openid):
+    def get_holder(self, serve, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(weixin=openid)
+        _user = account.get_account(appid=serve, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
         if not _user['mask']>>1 & 1:
@@ -462,16 +462,16 @@ class WeiXinViewHandler(BaseHandler):
 
         self.redirect('/holder/{}?token={}'.format(_user['user'], token))
 
-    def _check_weixin_account(self, openid):
+    def _check_weixin_account(self, serve, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(weixin=openid)
+        _user = account.get_account(appid=serve, weixin=openid)
         if not _user:
-            account.create_weixin_account(openid)
+            account.create_weixin_account(serve, openid)
 
     @_trace_wrapper
-    def earn_coin(self, openid):
+    def earn_coin(self, serve, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(weixin=openid)
+        _user = account.get_account(appid=serve, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
 
@@ -482,20 +482,18 @@ class WeiXinViewHandler(BaseHandler):
         token = util.token(str(_user['id']))
         self.redirect('/getdbi.html?user={}&token={}'.format(_user['id'], token))
 
-    def join_us(self, openid):
-        self.render('joinus.html', Openid=openid)
+    def join_us(self, serve, openid):
+        self.render('joinus.html', appid=serve, Openid=openid)
 
 class WeiXinHandler(BaseHandler):
     '''
+        /wx/weixin_serve
+            bidong 
+            zhongtuo (sufuwu)
     '''
-    # weixin open account's info
     WEIXIN_CONFIG = settings['weixin']
-    _WX_IP = 'api.weixin.qq.com'
-    # for family,type,proto,canonname,sockaddr in socket.getaddrinfo('api.weixin.qq.com', None, socket.AF_INET, 0, socket.SOL_TCP):
-    #     _WX_IP = sockaddr[0]
-    #     break
-    WEIXIN_CONFIG = settings['weixin']
-    BASE_URL = 'https://api/{}/cgi-bin'.format(_WX_IP)
+    BASE_URL = 'https://api/{}/cgi-bin'.format(settings['wx_api'])
+
     URLS = {
         # 'create_menu':'{}/menu/create?access_token={}'.format(BASE_URL, WeiXinHandler.get_token()),
         'access_token':'{}/token?grant_type={}&appid={}&secret={}'.format(BASE_URL, 
@@ -504,6 +502,7 @@ class WeiXinHandler(BaseHandler):
                                                                           WEIXIN_CONFIG['secret']),
     }
 
+    # TOKEN = {'account_token':'', 'expire_seconds':0}
     TOKEN = {'account_token':'', 'expire_seconds':0}
     # read token
     _token_path = os.path.join(CURRENT_PATH, 'token.cnf')
@@ -536,7 +535,7 @@ class WeiXinHandler(BaseHandler):
             logger.error('get access_token error, ret: {}'.format(result))
             raise HTTPError(500)
 
-    def prepare(self):
+    def check_signature(self, serve):
         '''
             all request must be check request's issuer
         '''
@@ -544,13 +543,19 @@ class WeiXinHandler(BaseHandler):
         timestamp = self.get_argument('timestamp')
         nonce = self.get_argument('nonce')
 
-        sha1 = util.sha1(''.join(sorted([self.WEIXIN_CONFIG['_TOKEN_'], timestamp, nonce])))
+        token = self.WEIXIN_CONFIG['serve']['token']
+
+        sha1 = util.sha1(''.join(sorted([token, timestamp, nonce])))
         if signature != sha1.hexdigest():
             raise HTTPError(400)
     
     @_trace_wrapper 
     @_parse_body
-    def get(self):
+    def get(self, serve='bidong'):
+        '''
+            servers : weixin serve name
+        '''
+        self.check_signature(serve)
         echostr = self.get_argument('echostr')
         self.finish(echostr)
 
@@ -587,10 +592,14 @@ class WeiXinHandler(BaseHandler):
 
     @_trace_wrapper
     @_parse_body
-    def post(self):
+    def post(self, serve='bidong'):
         '''
             parse client's message, then return correspond response
         '''
+        # check request 
+        self.check_signature(serve)
+        appid = self.WEIXIN_CONFIG[serve]['appid']
+
         root = ET.fromstring(self.request.body) 
         request = {item.tag:item.text for item in list(root)}
         # request = {item.tag:item.text for item in list(root)}
@@ -600,15 +609,15 @@ class WeiXinHandler(BaseHandler):
             if request['Event'] == 'CLICK':
                 if request['EventKey'] == 'V1001_NET_ACCOUNT':
                     # query online account and return account
-                    self._check_weixin_account(request['FromUserName'])
-                    _user = account.get_weixin_account(request['FromUserName'])
+                    self._check_weixin_account(appid, request['FromUserName'])
+                    _user = account.get_weixin_account(appid, request['FromUserName'])
                     return self.xml_response(request, _user)
             if request['Event'] == 'subscribe':
                 # check FromUserName & ToUserName 
-                account.create_weixin_account(request['FromUserName'])
+                account.create_weixin_account(appid, request['FromUserName'])
                 return self.finish()
             if request['Event'] == 'unsubscribe':
-                account.remove_weixin_account(request['FromUserName'])
+                account.remove_weixin_account(appid, request['FromUserName'])
                 return self.finish()
             if request['Event'] == 'VIEW':
                 # self._check_weixin_account(request['FromUserName'])
@@ -617,11 +626,11 @@ class WeiXinHandler(BaseHandler):
             print(request['MsgType'])
         self.finish()
 
-    def _check_weixin_account(self, openid):
+    def _check_weixin_account(self, appid, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(weixin=openid)
+        _user = account.get_account(appid=appid, weixin=openid)
         if not _user:
-            account.create_weixin_account(openid)
+            account.create_weixin_account(appid, openid)
 
 class PageHandler(BaseHandler):
     '''

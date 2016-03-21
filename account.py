@@ -205,41 +205,33 @@ def remove_account(user, mask=1):
 def get_bd_account(user, fields=('user', 'mask', 'ends', 'expired', 'coin')):
     return db.get_bd_user(user) or db.get_bd_user2(user)
 
-def create_weixin_account(openid):
+def create_weixin_account(appid, openid):
     '''
         check openid existed?
             exist : return
             not exist : create account
     '''
-    account = db.get_user(openid)
-    if not account:
-        account = db.get_user2(openid)
+    account = db.get_account(appid=appid, weixin=openid) or db.get_account2(appid=appid, weixin=openid)
 
     if not account:
         # create account
-        db.add_user(openid, util.generate_password())
+        db.add_user(openid, util.generate_password(), appid=appid)
     else:
         if account['mask']>>28 & 1:
             account['mask'] = account['mask'] ^ 1<<28
-            db.update_user(openid, account)
+            db.update_account(account['id'], account['mask'])
 
-def remove_weixin_account(openid):
-    account = db.get_user(openid)
-    if not account:
-        account = db.get_user2(openid)
+def remove_weixin_account(appid, openid):
+    account = db.get_account(appid=appid, weixin=openid) or db.get_account2(appid=appid, weixin=openid)
 
     if account:
         account['mask'] = account['mask'] | 1<<28
-        db.update_user(openid, account)
+        db.update_account(account['id'], account['mask'])
 
-def get_weixin_account(openid):
-    account = db.get_user(openid)
-    if not account:
-        account = db.get_user2(openid)
+def get_weixin_account(appid, openid):
+    account = db.get_account(appid=appid, weixin=openid) or db.get_account2(appid=appid, weixin=openid)
 
-    _user = db.get_bd_user(str(account['id']))
-    if not _user:
-        _user = db.get_bd_user2(str(account['id']))
+    _user = db.get_bd_user(str(account['id'])) or db.get_bd_user2(str(account['id']))
     return _user
 
 def update_account(user, **kwargs):
@@ -268,7 +260,7 @@ def unbind(weixin, user):
 #
 ########################################################
 def create_app_account(uuid, mask):
-    _id = db.add_user(uuid, util.generate_password(), mask)
+    _id = db.add_user(uuid, util.generate_password(), ends=mask)
     return _id
 
 def merge_account(user, uuid, mask):

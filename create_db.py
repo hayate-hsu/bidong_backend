@@ -44,6 +44,44 @@ portal varchar(64) not null default '',
 policy smallint(6) not null default 0,
 note varchar(128) not null default '',
 ispri tinyint(1) not null default 0, 
+primary key (id),
+unique index account_app_weixin(appid, weixin))
+auto_increment = 10000;
+'''
+
+# create wx table
+wx = '''
+create  table if not exists wx (
+id int(11) unsigned not null auto_increment,
+appid varchar(32) not null,
+secret varchar(64) not null,
+token varchar(64) not null,
+key varchar(64) not null default '',
+note varchar(128) not null default '',
+ctime datetime not null default current_timestamp,
+primary key (id),
+unique index wx_appid (appid))
+auto_increment = 1000;
+)
+'''
+
+# create wx_subscribe table
+wx_subscribe = '''
+create table if not exists wx_subscribe (
+id int(11) unsigned not null auto_increment,
+appid varchar(24) not null,
+user int(11) unsigned not null,
+subscribe tinyint(1) not null,
+openid varchar(32) not null,
+
+nickname varchar(32) not null,
+sex tinyint not null default 0,
+language varchar(12) not null,
+headimgurl varchar(256) not null default '',
+subscribe_time datetime not null default current_timestamp,
+unionid varchar(32) not null default '',
+remark varchar(64) not null default '',
+groupid int(11) not null default 0,
 primary key (id))
 auto_increment = 10000;
 '''

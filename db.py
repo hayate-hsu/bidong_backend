@@ -393,6 +393,17 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
+    def update_account(self, user, **kwargs):
+        '''
+        '''
+        with Connect(self.dbpool) as conn:
+            # cur = conn.cursor()
+            cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            if kwargs:
+                modify_str = ', '.join('{} = "{}"'.format(key, value) for key,value in kwargs.iteritems())
+                sql = 'update account set {} where id = {}'.format(modify_str, user) 
+                cur.execute(sql)
+                conn.commit()
 
 
     def add_holder(self, weixin, password, mobile, expired,
@@ -742,10 +753,11 @@ class Store():
                     cur.execute(sql)
             conn.commit()
 
-    def add_user(self, user, password, ends=2**5):
+    def add_user(self, user, password, appid='', ends=2**5):
         '''
             user : uuid or weixin openid
             password : user encrypted password
+            appid : ''
             ends : special the end type         data
                 0 : unknown                     
                 2^5 : weixin        opendid
@@ -774,15 +786,20 @@ class Store():
                 mask = 0 + 2**2 + 2**7
                 sql = '''insert into account (uuid, mask, ctime) 
                 values ("{}", {}, "{}")'''.format(user, mask, now)
-            else:
+            elif (ends>>5 & 1) and appid:
                 # from weixin
                 column = 'weixin'
-                sql = '''insert into account (weixin, mask, ctime) 
-                values ("{}", {}, "{}")'''.format(user, mask, now)
+                sql = '''insert into account (appid, weixin, mask, ctime) 
+                values ("{}", "{}", {}, "{}")'''.format(user, mask, now)
+            else:
+                raise ValueError(msg='Unknown platform type,{} {}'.format(appid, ends))
 
             cur.execute(sql)
-
+            
             sql = 'select id from account where {} = "{}"'.format(column, user)
+            if appid:
+                sql = sql + ' and appid={}'.format(appid)
+
             cur.execute(sql)
             user = cur.fetchone()
             #
@@ -796,17 +813,6 @@ class Store():
             conn.commit()
             return user['id']# , password, mask, time_length
 
-    def update_user(self, user, account):
-        '''
-        '''
-        with Connect(self.dbpool) as conn:
-            # cur = conn.cursor()
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'update account set mask = {} where weixin = "{}"'.format(account['mask'], user) 
-            cur.execute(sql)
-            # sql = 'update bd_account set mask = {} where user = "{}"'.format(account['mask'], str(account['id'])) 
-            # cur.execute(sql)
-            conn.commit()
 
     def update_user2(self, user, **kwargs):
         '''
