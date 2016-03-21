@@ -397,7 +397,7 @@ class WeiXinViewHandler(BaseHandler):
         /m_web/(.*)
         /wx/m_weixin_serve/(.*)
     '''
-    WEIXIN_CONFIG = settings['weixin']
+    # WEIXIN_CONFIG = settings['weixin']
     # _WX_IP = 'api.weixin.qq.com'
 
     URL = ''.join(['https://', settings['wx_api'], '/sns/oauth2/access_token?appid={}&secret={}&code={}&grant_type=authorization_code'])
@@ -418,7 +418,7 @@ class WeiXinViewHandler(BaseHandler):
         '''
         '''
         print(self.request)
-        configure = self.WEIXIN_CONFIG.getattr(serve)
+        configure = settings['weixin'][serve]
         code = self.get_argument('code', '')
         if not code:
             # user forbid
@@ -491,15 +491,15 @@ class WeiXinHandler(BaseHandler):
             bidong 
             zhongtuo (sufuwu)
     '''
-    WEIXIN_CONFIG = settings['weixin']
+    # WEIXIN_CONFIG = settings['weixin']
     BASE_URL = 'https://api/{}/cgi-bin'.format(settings['wx_api'])
 
     URLS = {
         # 'create_menu':'{}/menu/create?access_token={}'.format(BASE_URL, WeiXinHandler.get_token()),
         'access_token':'{}/token?grant_type={}&appid={}&secret={}'.format(BASE_URL, 
-                                                                          WEIXIN_CONFIG['grant_type'], 
-                                                                          WEIXIN_CONFIG['appid'], 
-                                                                          WEIXIN_CONFIG['secret']),
+                                                                          'grant_type', 
+                                                                          'appid', 
+                                                                          'secret'),
     }
 
     # TOKEN = {'account_token':'', 'expire_seconds':0}
@@ -543,7 +543,7 @@ class WeiXinHandler(BaseHandler):
         timestamp = self.get_argument('timestamp')
         nonce = self.get_argument('nonce')
 
-        token = self.WEIXIN_CONFIG['serve']['token']
+        token = settings['weixin'][serve]['token']
 
         sha1 = util.sha1(''.join(sorted([token, timestamp, nonce])))
         if signature != sha1.hexdigest():
@@ -598,7 +598,7 @@ class WeiXinHandler(BaseHandler):
         '''
         # check request 
         self.check_signature(serve)
-        appid = self.WEIXIN_CONFIG[serve]['appid']
+        appid = settings['weixin'][serve]['appid']
 
         root = ET.fromstring(self.request.body) 
         request = {item.tag:item.text for item in list(root)}
