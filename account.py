@@ -219,14 +219,14 @@ def create_weixin_account(appid, openid):
     else:
         if account['mask']>>28 & 1:
             account['mask'] = account['mask'] ^ 1<<28
-            db.update_account(account['id'], account['mask'])
+            db.update_account(account['id'], mask=account['mask'])
 
 def remove_weixin_account(appid, openid):
     account = db.get_account(appid=appid, weixin=openid) or db.get_account2(appid=appid, weixin=openid)
 
     if account:
         account['mask'] = account['mask'] | 1<<28
-        db.update_account(account['id'], account['mask'])
+        db.update_account(account['id'], mask=account['mask'])
 
 def get_weixin_account(appid, openid):
     account = db.get_account(appid=appid, weixin=openid) or db.get_account2(appid=appid, weixin=openid)

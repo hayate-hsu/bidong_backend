@@ -790,7 +790,7 @@ class Store():
                 # from weixin
                 column = 'weixin'
                 sql = '''insert into account (appid, weixin, mask, ctime) 
-                values ("{}", "{}", {}, "{}")'''.format(user, mask, now)
+                values ("{}", "{}", {}, "{}")'''.format(appid, user, mask, now)
             else:
                 raise ValueError(msg='Unknown platform type,{} {}'.format(appid, ends))
 

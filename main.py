@@ -81,9 +81,9 @@ class Application(tornado.web.Application):
             (r'/account/(.*)/merge', MergeHandler),
             (r'/account/(.*)/$', AccountHistoryHandler),
             (r'/account/?(.*)$', AccountHandler),
-            (r'/wx/m_(.*)/(.*)', WeiXinViewHandler),
+            (r'/wx/m_(.*?)/(.*)$', WeiXinViewHandler),
             (r'/wx/?(.*)$', WeiXinHandler),
-            (r'/(getdbi)\.html', FactoryHandler),
+            (r'/(getdbi)\.html$', FactoryHandler),
             (r'/(.*?\.html)$', PageHandler),
             # in product environment, use nginx to support static resources
             # (r'/(.*\.(?:css|jpg|png|js|ico|json))$', tornado.web.StaticFileHandler, 
@@ -427,17 +427,20 @@ class WeiXinViewHandler(BaseHandler):
         client = tornado.httpclient.AsyncHTTPClient()
         # client = tornado.httpclient.HTTPClient()
         response = yield client.fetch(url, allow_nonstandard_methods=True)
+
+        if response.error:
+            response.rethrow()
         
         result = json_decoder(response.body)
 
-        self._check_weixin_account(serve, result['openid'])
+        self._check_weixin_account(configure['appid'], result['openid'])
 
-        self.dispatch[action](serve, result['openid'])
+        self.dispatch[action](configure['appid'], result['openid'])
 
 
-    def auto_login(self, serve, openid):
+    def auto_login(self, appid, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=serve, weixin=openid)
+        _user = account.get_account(appid=appid, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
         # if not _user['mask']>>1 & 1:
@@ -451,9 +454,9 @@ class WeiXinViewHandler(BaseHandler):
         token = util.token(_user['user'])
         self.redirect('/account/{}?token={}'.format(_user['user'], token))
 
-    def get_holder(self, serve, openid):
+    def get_holder(self, appid, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=serve, weixin=openid)
+        _user = account.get_account(appid=appid, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
         if not _user['mask']>>1 & 1:
@@ -462,16 +465,16 @@ class WeiXinViewHandler(BaseHandler):
 
         self.redirect('/holder/{}?token={}'.format(_user['user'], token))
 
-    def _check_weixin_account(self, serve, openid):
+    def _check_weixin_account(self, appid, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=serve, weixin=openid)
+        _user = account.get_account(appid=appid, weixin=openid)
         if not _user:
-            account.create_weixin_account(serve, openid)
+            account.create_weixin_account(appid, openid)
 
     @_trace_wrapper
-    def earn_coin(self, serve, openid):
+    def earn_coin(self, appid, openid):
         # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=serve, weixin=openid)
+        _user = account.get_account(appid=appid, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
 
