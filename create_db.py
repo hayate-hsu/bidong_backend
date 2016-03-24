@@ -53,6 +53,7 @@ auto_increment = 10000;
 wx = '''
 create  table if not exists wx (
 id int(11) unsigned not null auto_increment,
+name varchar(24) not null,
 appid varchar(32) not null,
 secret varchar(64) not null,
 token varchar(64) not null,
@@ -60,6 +61,7 @@ key varchar(64) not null default '',
 note varchar(128) not null default '',
 ctime datetime not null default current_timestamp,
 primary key (id),
+unique index wx_name(name),
 unique index wx_appid (appid))
 auto_increment = 1000;
 )
@@ -70,20 +72,24 @@ wx_subscribe = '''
 create table if not exists wx_subscribe (
 id int(11) unsigned not null auto_increment,
 appid varchar(24) not null,
+openid varchar(32) not null,
 user int(11) unsigned not null,
 subscribe tinyint(1) not null,
-openid varchar(32) not null,
 
-nickname varchar(32) not null,
+
+nickname varchar(32) not null default '',
 sex tinyint not null default 0,
-language varchar(12) not null,
+language varchar(12) not null default '',
+city varchar(32) not null default '',
+province varchar(32) not null default '',
+country varchar(32) not null default '',
 headimgurl varchar(256) not null default '',
 subscribe_time datetime not null default current_timestamp,
 unionid varchar(32) not null default '',
 remark varchar(64) not null default '',
 groupid int(11) not null default 0,
 primary key (id))
-auto_increment = 10000;
+auto_increment = 1000000;
 '''
 
 # ssid settings

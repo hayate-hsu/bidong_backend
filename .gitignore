@@ -4,6 +4,7 @@ ehthumbs.db
 
 # project settings container password
 settings.py
+wx.config.py
 
 # Folder config file
 Desktop.ini

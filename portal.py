@@ -604,9 +604,17 @@ class MobileHandler(BaseHandler):
         #         raise HTTPError(403, reason='mobile is not nansha employee')
         #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         # isNS = 1 if account.get_ns_employee(mobile=mobile) else 0
+
         
         verify = util.generate_verify_code()
-        self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
+        mask = self.get_argument('mask', 0)
+        # mask: 4 - web portal platform 
+        if mask>>2 & 1:
+            code = util.md5(verify).hexdigest()[-8:]
+            verify = code[12:16] + code[-4:]
+            self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
+        else:
+            self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
 
         # send verify code to special mobile
         data = json_encoder({'mobile':mobile, 'code':verify})
@@ -693,6 +701,8 @@ class RegisterHandler(BaseHandler):
     @_parse_body
     def post(self):
         mask = int(self.get_argument('mask'))
+        if mask>>8 & 1:
+            pass
         uuid = self.get_argument('uuid')
         _account = account.get_account(uuid=uuid)
         _id = ''

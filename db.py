@@ -407,7 +407,7 @@ class Store():
 
 
     def add_holder(self, weixin, password, mobile, expired,
-                      email='', address='', realname='', portal='login.html', billing=0):
+                      email='', address='', realname='', billing=0):
         '''
             add hold user, user must with tel & address
             mask = 0 + 2**1 + [2**8]
@@ -471,7 +471,7 @@ class Store():
                 cur.execute(sql)
                 pages = cur.fetchone()['counts']
             start = page*per
-            sql = '''select id, realname, mobile, mask, address, expired, portal, policy from account 
+            sql = '''select id, realname, mobile, mask, address, expired, from account 
             where mask & 3 = {} order by id desc limit {}, {}'''.format(mask, start, per)
             cur.execute(sql)
             results = cur.fetchall()
@@ -499,7 +499,7 @@ class Store():
             modify_dict = {}
             mask = kwargs.get('mask', 0)
             if verify:
-                modify_dict['mask'] = _user['mask'] | 1 | (1<<3) | (1<<8)
+                modify_dict['mask'] = _user['mask'] | 1 | (1<<3) 
                 modify_dict['holder'] = holder
             elif frozen == 1 and mask and mask & 1<<30:
                 modify_dict['mask'] = _user['mask'] | 1<<30
@@ -530,17 +530,6 @@ class Store():
                 for renter in renters:
                     sql = 'update bd_account set mask = {} where user = "{}"'.format(renter['mask'] ^ 1<<30, renter['user'])
                     cur.execute(sql)
-
-            # update holder's billing settings
-            # modify_dict = {}
-            # if 'portal' in kwargs:
-            #     modify_dict['portal'] = kwargs['portal']
-            # if 'policy' in kwargs:
-            #     modify_dict['policy'] = kwargs['policy']
-            # if modify_dict:
-            #     modify_str = ', '.join('{} = "{}"'.format(key,value) for key,value in modify_dict.iteritems())
-            #     sql = 'update account set {} where id = {}'.format(modify_str, holder)
-            #     cur.execute(sql)
 
             conn.commit()
 
@@ -703,11 +692,11 @@ class Store():
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             user = '{}{}'.format(holder, room)
-            sql = 'delete from userinfo where user = {}'.format(user)
+            sql = 'delete from userinfo where user = "{}"'.format(user)
             cur.execute(sql)
             # sql = 'delete from amount where user = {}'.format(user)
             # cur.execute(sql)
-            sql = 'delete from bd_account where user = {} and holder = {}'.format(user, holder)
+            sql = 'delete from bd_account where user = "{}" and holder = {}'.format(user, holder)
             cur.execute(sql)
             sql = 'delete from bind where renter = "{}"'.format(user)
             cur.execute(sql)
@@ -1276,6 +1265,14 @@ class Store():
 
             conn.commit()
             return results
+
+    def  get_wx_config(self):
+        '''
+        '''
+        with Cursor(self.dbpool) as cur:
+            cur.execute('select * from wx')
+            return cur.fetchall()
+
 
     def get_pns(self):
         with Cursor(self.dbpool) as cur:

@@ -252,6 +252,9 @@ def bind(weixin, user):
 def unbind(weixin, user):
     db.unbind(weixin, user)
 
+def get_weixin_config():
+    return db.get_wx_config()
+
 ########################################################
 #
 #

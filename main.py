@@ -31,7 +31,7 @@ import re
 # import struct
 # import hashlib
 import socket
-# import collections
+import collections
 import functools
 import time
 import datetime
@@ -58,6 +58,9 @@ import settings
 
 import account
 import _const
+
+WEIXIN_CONFIG = {}
+WEIXIN_TOKEN = collections.defaultdict(dict)
 
 
 # json_encoder2 : serial datetime&date to string
@@ -418,7 +421,7 @@ class WeiXinViewHandler(BaseHandler):
         '''
         '''
         print(self.request)
-        configure = settings['weixin'][serve]
+        configure = WEIXIN_CONFIG[serve]
         code = self.get_argument('code', '')
         if not code:
             # user forbid
@@ -502,14 +505,14 @@ class WeiXinHandler(BaseHandler):
 
     URLS = {
         # 'create_menu':'{}/menu/create?access_token={}'.format(BASE_URL, WeiXinHandler.get_token()),
-        'access_token':'{}/token?grant_type={}&appid={}&secret={}'.format(BASE_URL, 
-                                                                          'grant_type', 
-                                                                          'appid', 
-                                                                          'secret'),
+        'access_token':'https://api.weixin.qq.com/cgi-bin/token?\
+        grant_type=grant_type&appid={}&secret={}', 
+        'user_info':'https://api.weixin.qq.com/cgi-bin/user/info?\
+        access_token={}&openid={}&lang=zh_CN'
     }
 
+    # # TOKEN = {'account_token':'', 'expire_seconds':0}
     # TOKEN = {'account_token':'', 'expire_seconds':0}
-    TOKEN = {'account_token':'', 'expire_seconds':0}
     # read token
     _token_path = os.path.join(CURRENT_PATH, 'token.cnf')
     if os.path.exists(_token_path):
@@ -517,7 +520,7 @@ class WeiXinHandler(BaseHandler):
             TOKEN = json_decoder(f.read())
 
     @classmethod
-    def get_token(cls):
+    def get_token(cls, serve='bidong'):
         '''
             access weixin server to get access_token.
             the special request is blocking. so all WeixinHandler
@@ -549,7 +552,7 @@ class WeiXinHandler(BaseHandler):
         timestamp = self.get_argument('timestamp')
         nonce = self.get_argument('nonce')
 
-        token = settings['weixin'][serve]['token']
+        token = WEIXIN_CONFIG[serve]['token']
 
         sha1 = util.sha1(''.join(sorted([token, timestamp, nonce])))
         if signature != sha1.hexdigest():
@@ -604,7 +607,7 @@ class WeiXinHandler(BaseHandler):
         '''
         # check request 
         self.check_signature(serve)
-        appid = settings['weixin'][serve]['appid']
+        appid = WEIXIN_CONFIG[serve]['appid']
 
         root = ET.fromstring(self.request.body) 
         request = {item.tag:item.text for item in list(root)}
@@ -854,20 +857,6 @@ class ManagerHandler(AccountBaseHandler):
         rooms = [item['room'] for item in renters]
         rooms = sorted(rooms)
         return self.render_json_response(Code=200, Msg='OK', Rooms=rooms)
-
-class Manager2Handler(AccountBaseHandler):
-    '''
-        api/manager/*
-        maintain administrator account
-    '''
-    def get(self):
-        pass
-
-    def post(self):
-        pass
-
-    def put(self):
-        pass
 
 class GroupsHandler(AccountBaseHandler):
     '''
@@ -1687,6 +1676,15 @@ def add_udp_handler(sock, servers, io_loop=None):
                 traceback.print_exc(file=sys.stdout)
     io_loop.add_handler(sock.fileno(), udp_handler, tornado.ioloop.IOLoop.READ)
 
+def init_weixin_config():
+    '''
+        read wx table, and initialize WEIXIN_CONFIG
+    '''
+    global WEIXIN_CONFIG
+    results = account.get_weixin_config()
+    WEIXIN_CONFIG = {item['name']:item for item in results}
+    # logger.info('{}'.format(WEIXIN_CONFIG))
+
 def main():
     global logger
     tornado.options.parse_command_line()
@@ -1698,6 +1696,9 @@ def main():
     bidong_pid = os.path.join(settings['RUN_PATH'], 'p_{}.pid'.format(options.port))
     with open(bidong_pid, 'w') as f:
         f.write('{}'.format(os.getpid()))
+
+    # read weixin configurations
+    init_weixin_config()
 
     app = Application()
     app.listen(options.port, xheaders=app.settings.get('xheaders', False))
