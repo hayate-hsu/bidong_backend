@@ -471,8 +471,7 @@ class Store():
                 cur.execute(sql)
                 pages = cur.fetchone()['counts']
             start = page*per
-            sql = '''select id, realname, mobile, mask, address, expired, from account 
-            where mask & 3 = {} order by id desc limit {}, {}'''.format(mask, start, per)
+            sql = '''select id, realname, mobile, mask, address, expired from account where mask & 3 = {} order by id desc limit {}, {}'''.format(mask, start, per)
             cur.execute(sql)
             results = cur.fetchall()
             results = results if results else []

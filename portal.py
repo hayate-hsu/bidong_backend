@@ -702,6 +702,7 @@ class RegisterHandler(BaseHandler):
     def post(self):
         mask = int(self.get_argument('mask'))
         if mask>>8 & 1:
+            # check account by mobile & mac address
             pass
         uuid = self.get_argument('uuid')
         _account = account.get_account(uuid=uuid)

@@ -176,7 +176,7 @@ def get_renters(holder):
     results = db.get_holder_renters(holder)    
     bd_account, renters = {}, []
     for item in results:
-        if int(item['user']) == holder:
+        if item['mask'] >>3 & 1:
             bd_account = item
             continue
         item['room'] = item['user'].replace(str(holder), '')
