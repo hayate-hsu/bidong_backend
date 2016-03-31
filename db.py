@@ -393,6 +393,17 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
+    def get_account_by_mobile_or_mac(self, mobile, mac):
+        with Cursor(self.dbpool) as cur:
+            cur.execute('select * from account where mobile="{}" or (mask>>6&1 and uuid="{}")'.format(mobile, mac))
+            result = cur.fetchone()
+            if result:
+                cur.execute('select * from bd_account where user="{}"'.format(result['id']))
+                result = cur.fetchone()
+
+            return result
+
+
     def update_account(self, user, **kwargs):
         '''
         '''
@@ -741,7 +752,7 @@ class Store():
                     cur.execute(sql)
             conn.commit()
 
-    def add_user(self, user, password, appid='', ends=2**5):
+    def add_user(self, user, password, appid='', mobile='', ends=2**5):
         '''
             user : uuid or weixin openid
             password : user encrypted password
@@ -774,6 +785,11 @@ class Store():
                 mask = 0 + 2**2 + 2**7
                 sql = '''insert into account (uuid, mask, ctime) 
                 values ("{}", {}, "{}")'''.format(user, mask, now)
+            elif ends>>8 & 1:
+                column = 'mobile'
+                user = mobile
+                mask = 0 + 2**2 + 2**8
+                sql = 'insert into account (mobile, mask) values ("{}", {})'.format(mobile, mask)
             elif (ends>>5 & 1) and appid:
                 # from weixin
                 column = 'weixin'
@@ -790,8 +806,7 @@ class Store():
 
             cur.execute(sql)
             user = cur.fetchone()
-            #
-            # mask = mask + 2**9
+
             coin = 60
 
             sql = '''insert into bd_account (user, password, mask, coin, expired, holder, ends) 
@@ -945,15 +960,30 @@ class Store():
             #             user['expired'] = ret['expired']
             return user
 
-
-    def get_bd_user_by_mac(self, user_mac):
+    def get_user_by_mac(self, mac):
+        '''
+            mac address : 
+        '''
         with Cursor(self.dbpool) as cur:
-            sql = '''select bd_account.*, online.mac_addr from bd_account, 
-            online where bd_account.user = online.user and 
-            online.mac_addr = "{}"'''.format(user_mac)
+            sql = 'select user, mac, tlogin from mac_history where mac="{}" order by tlogin'.format(mac)
             cur.execute(sql)
-            user = cur.fetchone()
-            return user
+            _user = cur.fetchone()
+            if _user:
+                sql = 'select * from bd_account where user="{}"'.format(_user['user'])
+                cur.execute(sql)
+                _user = cur.fetchone()
+
+            return _user
+
+
+    # def get_bd_user_by_mac(self, user_mac):
+    #     with Cursor(self.dbpool) as cur:
+    #         sql = '''select bd_account.*, online.mac_addr from bd_account, 
+    #         online where bd_account.user = online.user and 
+    #         online.mac_addr = "{}"'''.format(user_mac)
+    #         cur.execute(sql)
+    #         user = cur.fetchone()
+    #         return user
 
     def is_online(self, nas_addr, acct_session_id):
         '''

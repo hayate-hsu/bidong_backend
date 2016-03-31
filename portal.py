@@ -146,6 +146,9 @@ class BaseHandler(tornado.web.RequestHandler):
     RESPONSES = {}
     RESPONSES.update(tornado.httputil.responses)
 
+    MOBILE_PATTERN = re.compile(r'^(?:13[0-9]|14[57]|15[0-35-9]|17[678]|18[0-9])\d{8}$')
+
+
     def initialize(self):
         '''
         '''
@@ -265,6 +268,9 @@ class BaseHandler(tornado.web.RequestHandler):
         agent = user_agents.parse(agent_str)
 
         return agent.is_mobile
+
+    def check_mobile(self, mobile):
+        return True if re.match(MobileHandler.MOBILE_PATTERN, mobile) else False
 
 def _parse_body(method):
     '''
@@ -481,7 +487,7 @@ class AccountHandler(BaseHandler):
 
         self.render_json_response(**OK)
 
-class BindHandler(AccountHandler):
+class BindHandler(BaseHandler):
     '''
     '''
     def check_token(self, user):
@@ -493,6 +499,7 @@ class BindHandler(AccountHandler):
         token2 = util.token2(user, expired)
         if token != token2:
             raise HTTPError(400, reason='Abnormal token')
+
 
     @_trace_wrapper
     @_parse_body
@@ -572,7 +579,6 @@ class MobileHandler(BaseHandler):
     '''
         verify mobile and send verify code
     '''
-    MOBILE_PATTERN = re.compile(r'^(?:13[0-9]|14[57]|15[0-35-9]|17[678]|18[0-9])\d{8}$')
     URL = 'http://14.23.171.10/'
 
     @_trace_wrapper
@@ -605,14 +611,13 @@ class MobileHandler(BaseHandler):
         #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
         # isNS = 1 if account.get_ns_employee(mobile=mobile) else 0
 
-        
         verify = util.generate_verify_code()
         mask = self.get_argument('mask', 0)
         # mask: 4 - web portal platform 
-        if mask>>2 & 1:
-            code = util.md5(verify).hexdigest()[-8:]
-            verify = code[12:16] + code[-4:]
-            self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
+        if mask>>8 & 1:
+            code = util.md5(verify).hexdigest()
+            code = code[12:16] + code[-4:]
+            self.render_json_response(verify=code, pn=pn, ssid=ssid, **OK)
         else:
             self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
 
@@ -627,8 +632,6 @@ class MobileHandler(BaseHandler):
         if response.code != 200:
             raise response.error
 
-    def check_mobile(self, mobile):
-        return True if re.match(MobileHandler.MOBILE_PATTERN, mobile) else False
 
 class VersionHandler(BaseHandler):
     '''
@@ -696,23 +699,34 @@ class VersionHandler(BaseHandler):
 #****************************************************
 class RegisterHandler(BaseHandler):
     '''
+        1<<6: android
+            {uuid:mac, mask:mask}
+        1<<7: ios
+            {uuid:uuid, mask:mask}<F8> 
+
     '''
     @_trace_wrapper
     @_parse_body
     def post(self):
         mask = int(self.get_argument('mask'))
+        _user = {}
         if mask>>8 & 1:
             # check account by mobile & mac address
-            pass
-        uuid = self.get_argument('uuid')
-        _account = account.get_account(uuid=uuid)
-        _id = ''
-        if not _account:
-            # can't found, create new account
-            _id = account.create_app_account(uuid, mask)
+            mobile = self.get_argument('mobile')
+            mac = self.get_argument('mac')
+            if not self.check_mobile(mobile):
+                raise HTTPError(400, reason='invalid mobile number')
+            _user = account.check_account_by_mobile_or_mac(mobile, mac)
         else:
-            _id = _account['id']
-        _user = account.get_bd_account(_id)
+            uuid = self.get_argument('uuid')
+            _account = account.get_account(uuid=uuid)
+            _id = ''
+            if not _account:
+                # can't found, create new account
+                _id = account.create_app_account(uuid, mask)
+            else:
+                _id = _account['id']
+            _user = account.get_bd_account(_id)
         
         return self.render_json_response(Code=200, Msg='OK', **_user)
 

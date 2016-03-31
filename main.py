@@ -1288,7 +1288,7 @@ class RoomHandler(AccountBaseHandler):
         holder = int(holder)
         self.check_holder(holder)
         rooms = self.get_argument('rooms')
-        logger.info('{}'.format(rooms))
+        # logger.info('{}'.format(rooms))
         account.update_renters(holder, rooms)
         self.render_json_response(**OK)
         # self.finish('Update {} info successfully'.format(rooms.keys()))

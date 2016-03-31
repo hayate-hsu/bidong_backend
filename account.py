@@ -191,6 +191,29 @@ def get_renters(holder):
 def get_account(**kwargs):
     return db.get_account(**kwargs) or db.get_account2(**kwargs)
 
+def check_account_by_mobile_or_mac(mobile, mac):
+    '''
+        1. first check mac_history 
+         
+        2. check user has been register?
+               mobile : 
+               mac : android register by mac address 
+    '''
+    _user = db.get_user_by_mac(mac)
+    if _user:
+        _user['existed'] = 1
+        return _user
+
+    _user = db.get_account_by_mobile_or_mac(mobile, mac)
+    if not _user:
+        # register account by mobile
+        password = util.generate_password()
+        user = db.add_user('', password, mobile=mobile, ends=2**8)
+        _user = {'user':user, 'password':password, 'existed':0}
+    else:
+        _user['existed'] = 1
+    return _user
+
 def remove_account(user, mask=1):
     '''
         mask :
