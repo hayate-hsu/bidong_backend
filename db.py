@@ -1175,6 +1175,18 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
+            # check weixin account 
+            sql = 'select * from bd_account where user="{}" and mask>>5&1'.format(weixin)
+            cur.execute(sql)
+            record = cur.fetchone()
+            if not record:
+                return
+
+            # check user type, must be renter room
+            cur.execute('select * from bd_account where user="{}" and mask>>8&1'.format(user))
+            record = cur.fetchone()
+            if not record:
+                return
             sql = 'select * from bind where weixin = "{}"'.format(weixin)
             cur.execute(sql)
             if cur.fetchone():
