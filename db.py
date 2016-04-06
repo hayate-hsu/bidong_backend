@@ -762,6 +762,7 @@ class Store():
                 2^5 : weixin        opendid
                 2^6 : app (android) opendid or other unique id 
                 2^7 : app (ios)
+                2^8 : base mobile
                 2**9: user pay by time
 
                 2**28 : acount forzened

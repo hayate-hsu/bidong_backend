@@ -246,6 +246,7 @@ class BaseHandler(tornado.web.RequestHandler):
         '''
             Encode dict and return response to client
         '''
+        # callback = self.get_argument('callback', None)
         callback = self.get_argument('callback', None)
         # check should return jsonp
         if callback:
@@ -612,7 +613,7 @@ class MobileHandler(BaseHandler):
         # isNS = 1 if account.get_ns_employee(mobile=mobile) else 0
 
         verify = util.generate_verify_code()
-        mask = self.get_argument('mask', 0)
+        mask = int(self.get_argument('mask', 0))
         # mask: 4 - web portal platform 
         if mask>>8 & 1:
             code = util.md5(verify).hexdigest()

@@ -901,7 +901,7 @@ class ImageHandler(BaseHandler):
             if not _id:
                 filename = self._gen_image_id_(filename, content_type, util.generate_password(8)) 
                 if ext:
-                    filename = '.'.join([filename, ext])
+                    filename = '.'.join([filename, ext.lower()])
             else:
                 filename = _id
             filepath = os.path.join(UPLOAD_IMAGE_PATH, filename.lower())
