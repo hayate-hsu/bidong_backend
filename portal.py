@@ -759,7 +759,7 @@ class PNSHandler(BaseHandler):
         pns = account.bind_avaiable_pns(user, mobile)
 
         if not pns:
-            raise HTTPError(404)
+            raise HTTPError(404, reason='{},{} doesn\'t belong to any pns'.format(user, mobile))
 
         self.render_json_response(pns=pns, **OK)
 

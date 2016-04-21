@@ -672,7 +672,7 @@ class Store():
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            mask = 2**1 + 2**8
+            mask = 2**1 + 2**8 + 2**9
             for room in rooms:
                 # insert holder's account
                 room_account = str(holder) + str(room)
