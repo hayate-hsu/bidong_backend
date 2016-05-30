@@ -438,18 +438,8 @@ class Store():
                 email="{}", address="{}", realname="{}" where id = {}
                 '''.format(mask, mobile, email, address, realname, user['id'])
                 cur.execute(sql)
-
-                # sql = 'select mask from bd_account where user = "{}"'.format(user['id'])
-                # cur.execute(sql)
-                # _user = cur.fetchone()
-                # mask = _user['mask'] + 2**8 + 2**3
-                # sql = 'update bd_account set mask = {} where user = "{}"'.format(mask, _user['user'])
-                # cur.execute(sql)
             else:
                 mask = 0 + 2**1
-                # if weixin:
-                #     mask = mask + 2**5
-                # insert holder account
                 sql = '''insert into account 
                 (mobile, email, mask, address, 
                 realname, ctime, expired) 

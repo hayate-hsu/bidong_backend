@@ -718,6 +718,10 @@ class RegisterHandler(BaseHandler):
             if not self.check_mobile(mobile):
                 raise HTTPError(400, reason='invalid mobile number')
             _user = account.check_account_by_mobile_or_mac(mobile, mac)
+
+            # bind avaiable pn
+            pns = account.bind_avaiable_pns(_user['user'], mobile)
+            logger.info('{}\'s {} avaiabled pns: {}'.format(_user['user'], mobile, pns))
         else:
             uuid = self.get_argument('uuid')
             _account = account.get_account(uuid=uuid)
