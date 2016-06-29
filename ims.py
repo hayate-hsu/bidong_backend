@@ -324,6 +324,7 @@ class IMHandler(BaseHandler):
             traceback.print_exc()
             self.render_json_response(Code=400, Msg='Send message failed')
         else:
+            print('send to {} successfully'.format(mobile))
             self.render_json_response(**OK)
 
 class NotifyHandler(BaseHandler):
@@ -339,6 +340,7 @@ class NotifyHandler(BaseHandler):
             traceback.print_exc()
             self.render_json_response(Code=400, Msg='Send message failed')
         else:
+            print('send to {} successfully'.format(mobile))
             self.render_json_response(**OK)
 
 _DEFAULT_BACKLOG = 128

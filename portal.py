@@ -103,6 +103,7 @@ class Application(tornado.web.Application):
 
             # check ssid property
             (r'/ssid/(.*)$', WIFIHandler),
+            (r'/cid/(.*)$', CIDHandler),
 
             # nansha interface
             # (r'/ns/manager', NSManagerHandler),
@@ -630,9 +631,9 @@ class MobileHandler(BaseHandler):
                                                  body=data)
         http_client = tornado.httpclient.AsyncHTTPClient() 
         response = yield http_client.fetch(request)
+        logger.info('response: {}'.format(response))
         if response.code != 200:
             raise response.error
-
 
 class VersionHandler(BaseHandler):
     '''
@@ -738,16 +739,16 @@ class RegisterHandler(BaseHandler):
 class PNSHandler(BaseHandler):
     '''
     '''
-    @_trace_wrapper
-    @_parse_body
-    @_check_token
-    def get(self):
-        '''
-            query pns which user can access
-        '''
-        pns = account.get_pns()
+    # @_trace_wrapper
+    # @_parse_body
+    # @_check_token
+    # def get(self):
+    #     '''
+    #         query pns which user can access
+    #     '''
+    #     pns = account.get_pns()
 
-        self.render_json_response(pns=pns, **OK)
+    #     self.render_json_response(pns=pns, **OK)
 
     @_trace_wrapper
     @_parse_body
@@ -782,6 +783,32 @@ class WIFIHandler(BaseHandler):
             return self.render_json_response(isys=isys, ispri=0, Code=200, Msg='OK')
         else:
             return self.render_json_response(isys=isys, Code=200, Msg='OK', **record)
+
+class CIDHandler(BaseHandler):
+    '''
+    '''
+    __Wi = [7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2]
+    __Ti = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
+    def get(self, cid):
+        if self.check_cid(cid):
+            self.finish('{} is valid cid'.format(cid))
+        else:
+            self.finish('{} is invalid'.format(cid))
+
+    def check_cid(self, cid):
+        if len(cid) == 18:
+            sum = 0
+            for i,item in enumerate(cid[:17]):
+                sum += int(item)*self.__Wi[i]
+            mask = self.__Ti[sum%11]
+            if mask == cid[-1]:
+                return True
+            else:
+                return False
+        elif len(cid) == 15:
+            raise HTTPError(400, reason='{} is not second cid'.format(cid))
+        else:
+            raise HTTPError(400, reason='{} abnormal cid'.format(cid))
 
 _DEFAULT_BACKLOG = 128
 # These errnos indicate that a non-blocking operation must be retried
