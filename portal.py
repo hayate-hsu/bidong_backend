@@ -791,9 +791,9 @@ class CIDHandler(BaseHandler):
     __Ti = ['1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2']
     def get(self, cid):
         if self.check_cid(cid):
-            self.finish('{} is valid cid'.format(cid))
+            self.finish('CID Check: {} passed'.format(cid))
         else:
-            self.finish('{} is invalid'.format(cid))
+            self.finish('CID Check: {} is invalid'.format(cid))
 
     def check_cid(self, cid):
         if len(cid) == 18:
@@ -806,7 +806,7 @@ class CIDHandler(BaseHandler):
             else:
                 return False
         elif len(cid) == 15:
-            raise HTTPError(400, reason='{} is not second cid'.format(cid))
+            raise HTTPError(400, reason='{} is not second generation cid'.format(cid))
         else:
             raise HTTPError(400, reason='{} abnormal cid'.format(cid))
 
