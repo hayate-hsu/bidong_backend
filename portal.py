@@ -97,6 +97,7 @@ class Application(tornado.web.Application):
 
             # get mobile verify code
             (r'/mobile$', MobileHandler),
+            (r'/sms$', SmsHandler),
 
             # pns operator
             (r'/pns/', PNSHandler),
@@ -635,6 +636,30 @@ class MobileHandler(BaseHandler):
         if response.code != 200:
             raise response.error
 
+class SmsHandler(BaseHandler):
+    URL = 'http://120.27.144.245:9999/smshttp?act=sendmsg&unitid=101063&username=gzzt&passwd=5690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a035707282&msg={}&phone={}&port=&sendtime'
+
+    @_trace_wrapper
+    @tornado.gen.coroutine
+    @_parse_body
+    def post(self):
+        act = self.get_argument('act')
+        if act == 'sendmsg':
+            code = self.get_argument('code')
+            mobile = self.get_argument('mobile')
+            msg = 'your mobile verify code:' + code
+            url = self.URL.format(msg, mobile)
+
+            request = tornado.httpclient.HTTPRequest(url, method='POST', body=b'')
+            http_client = tornado.httpclient.AsyncHTTPClient() 
+            response = yield http_client.fetch(request)
+            logger.info('response: {}'.format(response))
+
+            self.render_json_response(**OK)
+        if act in ('statusreport', 'upmsg'):
+            logger.info('request: {}'.format(self.request))
+            return 0
+
 class VersionHandler(BaseHandler):
     '''
         check app's version
@@ -797,6 +822,7 @@ class CIDHandler(BaseHandler):
 
     def check_cid(self, cid):
         if len(cid) == 18:
+            cid = cid.upper()
             sum = 0
             for i,item in enumerate(cid[:17]):
                 sum += int(item)*self.__Wi[i]
