@@ -598,14 +598,17 @@ class MobileHandler(BaseHandler):
         if not self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
         pn, ssid = '', ''
+        is_by = False
         pn = self.get_argument('pn', '')
         if pn:
             # check private network, if existed pn, return ssid & pn 
             record = account.get_pn_account(pn, mobile=mobile)
             if record:
                 ssid = record['ssid']
-            else:
-                raise HTTPError(403, reason='no privilege')
+            # else:
+            #     raise HTTPError(403, reason='no privilege')
+            if pn == '29475':
+                is_by = True
 
         verify = util.generate_verify_code()
         mask = int(self.get_argument('mask', 0))
@@ -619,7 +622,7 @@ class MobileHandler(BaseHandler):
 
         # send verify code to special mobile
         data, request = '', ''
-        if mask>>16 & 1:
+        if is_by:
             data = _const['msg_template'].format(code)
             url = MobileHandler.format(data, mobile)
             request = tornado.httpclient.HTTPRequest(url, method='POST', body=b'')

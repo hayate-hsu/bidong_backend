@@ -426,7 +426,10 @@ def get_pn_account(holder, **kwargs):
         kwargs : private network
     '''
     table = 'pn_{}'.format(holder)
-    return db.get_pn_account(table, **kwargs)
+    try:
+        return db.get_pn_account(table, **kwargs)
+    except:
+        return None
 
 @util.check_codes
 def add_pn_account(holder, **kwargs):
