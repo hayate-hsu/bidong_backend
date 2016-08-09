@@ -60,6 +60,7 @@ _now = util.now
 import settings
 
 import account
+import _const
 
 json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
@@ -583,6 +584,7 @@ class MobileHandler(BaseHandler):
         verify mobile and send verify code
     '''
     URL = 'http://14.23.171.10/'
+    BY_URL = 'http://120.27.144.245:9999/smshttp?act=sendmsg&unitid=101063&username=gzzt&passwd=5690dddfa28ae085d23518a035707282&msg={}&phone={}&port=&sendtime='
 
     @_trace_wrapper
     @tornado.gen.coroutine
@@ -604,15 +606,6 @@ class MobileHandler(BaseHandler):
                 ssid = record['ssid']
             else:
                 raise HTTPError(403, reason='no privilege')
-                # get pn's private network ssid
-        # flags = self.get_argument('flags', 0)
-        # if flags == 1:
-        #     # check account is nansha employee account
-        #     record = account.get_ns_employee(mobile=mobile)
-        #     if not record:
-        #         raise HTTPError(403, reason='mobile is not nansha employee')
-        #         # return self.render_json_response(Code=403, Msg='mobile not nansha employee')
-        # isNS = 1 if account.get_ns_employee(mobile=mobile) else 0
 
         verify = util.generate_verify_code()
         mask = int(self.get_argument('mask', 0))
@@ -625,11 +618,16 @@ class MobileHandler(BaseHandler):
             self.render_json_response(verify=verify, pn=pn, ssid=ssid, **OK)
 
         # send verify code to special mobile
-        data = json_encoder({'mobile':mobile, 'code':verify})
-        request = ''
-        request = tornado.httpclient.HTTPRequest(MobileHandler.URL, method='POST', 
-                                                 headers={'Content-Type':'application/json'}, 
-                                                 body=data)
+        data, request = '', ''
+        if mask>>16 & 1:
+            data = _const['msg_template'].format(code)
+            url = MobileHandler.format(data, mobile)
+            request = tornado.httpclient.HTTPRequest(url, method='POST', body=b'')
+        else:
+            data = json_encoder({'mobile':mobile, 'code':verify})
+            request = tornado.httpclient.HTTPRequest(MobileHandler.URL, method='POST', 
+                                                     headers={'Content-Type':'application/json'}, 
+                                                     body=data)
         http_client = tornado.httpclient.AsyncHTTPClient() 
         response = yield http_client.fetch(request)
         logger.info('response: {}'.format(response))
@@ -637,28 +635,16 @@ class MobileHandler(BaseHandler):
             raise response.error
 
 class SmsHandler(BaseHandler):
-    URL = 'http://120.27.144.245:9999/smshttp?act=sendmsg&unitid=101063&username=gzzt&passwd=5690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a0357072825690dddfa28ae085d23518a035707282&msg={}&phone={}&port=&sendtime'
-
     @_trace_wrapper
     @tornado.gen.coroutine
     @_parse_body
     def post(self):
         act = self.get_argument('act')
-        if act == 'sendmsg':
-            code = self.get_argument('code')
-            mobile = self.get_argument('mobile')
-            msg = 'your mobile verify code:' + code
-            url = self.URL.format(msg, mobile)
-
-            request = tornado.httpclient.HTTPRequest(url, method='POST', body=b'')
-            http_client = tornado.httpclient.AsyncHTTPClient() 
-            response = yield http_client.fetch(request)
-            logger.info('response: {}'.format(response))
-
-            self.render_json_response(**OK)
         if act in ('statusreport', 'upmsg'):
             logger.info('request: {}'.format(self.request))
-            return 0
+            self.finish('0')
+        else:
+            raise HTTPError(400)
 
 class VersionHandler(BaseHandler):
     '''
