@@ -395,14 +395,18 @@ class Store():
 
     def get_account_by_mobile_or_mac(self, mobile, mac):
         with Cursor(self.dbpool) as cur:
-            cur.execute('select * from account where mobile="{}" or (mask>>6&1 and uuid="{}")'.format(mobile, mac))
-            result = cur.fetchone()
-            if result:
-                cur.execute('select * from bd_account where user="{}"'.format(result['id']))
-                result = cur.fetchone()
+            filters = []
+            if mobile:
+                filters.append('account.mobile="{}"'.format(mobile))
+            if mac:
+                filters.append('(account.mask>>6&1 and uuid="{}")'.format(mac))
 
-            return result
+            filters = 'or'.join(filters)
 
+            sql = 'select bd_account.* from bd_account right join account on account.id=bd_account.user where {}'.format(mobile, mac, filters)
+            cur.execute(sql)
+
+            return cur.fetchone()
 
     def update_account(self, user, **kwargs):
         '''
