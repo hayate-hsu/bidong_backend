@@ -597,7 +597,8 @@ class MobileHandler(BaseHandler):
         mobile = self.get_argument('mobile')
         if not self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
-        ssid, is_by = '', False
+        pn, ssid = '', ''
+        is_by = False
         pn = self.get_argument('pn', '')
         if pn:
             # check private network, if existed pn, return ssid & pn 
@@ -622,8 +623,8 @@ class MobileHandler(BaseHandler):
         # send verify code to special mobile
         data, request = '', ''
         if is_by:
-            data = _const['msg_template'].format(verify)
-            url = MobileHandler.BY_URL.format(data, mobile)
+            data = _const['msg_template'].format(code)
+            url = MobileHandler.format(data, mobile)
             request = tornado.httpclient.HTTPRequest(url, method='POST', body=b'')
         else:
             data = json_encoder({'mobile':mobile, 'code':verify})
