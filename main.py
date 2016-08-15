@@ -81,7 +81,6 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r'/account/(.*?)/bind', BindHandler),
-            (r'/account/(.*)/merge', MergeHandler),
             (r'/account/(.*)/$', AccountHistoryHandler),
             (r'/account/?(.*)$', AccountHandler),
             (r'/wx/m_(.*?)/(.*)$', WeiXinViewHandler),
@@ -102,16 +101,6 @@ class Application(tornado.web.Application):
             # check version
             (r'/version', VersionHandler),
 
-            # get mobile verify code
-            (r'/mobile$', MobileHandler),
-            # nansha interface
-            (r'/ns/manager', NSManagerHandler),
-            # add/update/delete nansha employee
-            (r'/pn/(.*?)/(.*)$', PNAccountHandler),
-            (r'/pn/(.*)$', PNHolderHandler),
-
-            # group interface
-            (r'groups/?(.*)$', GroupsHandler),
             (r'/', MainHandler),
         ]
         settings = {
@@ -437,21 +426,13 @@ class WeiXinViewHandler(BaseHandler):
         
         result = json_decoder(response.body)
 
-        self._check_weixin_account(configure['appid'], result['openid'])
+        self.check_weixin_account(configure['appid'], result['openid'])
 
         self.dispatch[action](configure['appid'], result['openid'])
 
 
     def auto_login(self, appid, openid):
-        # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=appid, weixin=openid)
-        if not _user:
-            return self.render('error.html', Msg=_const[404])
-        # if not _user['mask']>>1 & 1:
-        #     return self.render('error.html', Msg=_const[453])
-
-        _user = account.get_bd_account(_user['id'])
-        # _user.pop('password', 0)
+        _user = account.check_weixin_account(appid=appid, weixin=openid)
         if not _user:
             raise HTTPError(404, reason='account not existed')
 
@@ -459,36 +440,23 @@ class WeiXinViewHandler(BaseHandler):
         self.redirect('/account/{}?token={}'.format(_user['user'], token))
 
     def get_holder(self, appid, openid):
-        # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=appid, weixin=openid)
+        _user = account.check_weixin_account(appid=appid, weixin=openid)
         if not _user:
-            return self.render('error.html', Msg=_const[404])
-        if not _user['mask']>>1 & 1:
+            raise HTTPError(404, reason='account not existed')
+        if not _user['amask']>>1 & 1:
             return self.render('error.html', Msg=_const[453])
         token = util.token(_user['user'])
 
         self.redirect('/holder/{}?token={}'.format(_user['user'], token))
 
     @_trace_wrapper
-    def _check_weixin_account(self, appid, openid):
-        # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=appid, weixin=openid)
-        if not _user:
-            account.create_weixin_account(appid, openid)
-
-    @_trace_wrapper
     def earn_coin(self, appid, openid):
-        # _user = account.get_account_by_openid(openid)
         _user = account.get_account(appid=appid, weixin=openid)
         if not _user:
             return self.render('error.html', Msg=_const[404])
 
-        # _user = account.get_bd_account(_user['id'])
-        # if not _user:
-        #     return self.render('error.html', Msg='account not existed')
-
-        token = util.token(str(_user['id']))
-        self.redirect('/getdbi.html?user={}&token={}'.format(_user['id'], token))
+        token = util.token(_user['user'])
+        self.redirect('/getdbi.html?user={}&token={}'.format(_user['user'], token))
 
     @_trace_wrapper
     def join_us(self, appid, openid):
@@ -618,28 +586,20 @@ class WeiXinHandler(BaseHandler):
             if request['Event'] == 'CLICK':
                 if request['EventKey'] == 'V1001_NET_ACCOUNT':
                     # query online account and return account
-                    self._check_weixin_account(appid, request['FromUserName'])
-                    _user = account.get_weixin_account(appid, request['FromUserName'])
+                    _user = self.check_weixin_account(appid, request['FromUserName'])
                     return self.xml_response(request, _user)
             if request['Event'] == 'subscribe':
                 # check FromUserName & ToUserName 
-                account.create_weixin_account(appid, request['FromUserName'])
+                account.check_weixin_account(appid, request['FromUserName'])
                 return self.finish()
             if request['Event'] == 'unsubscribe':
                 account.remove_weixin_account(appid, request['FromUserName'])
                 return self.finish()
             if request['Event'] == 'VIEW':
-                # self._check_weixin_account(request['FromUserName'])
                 pass
         else:
             print(request['MsgType'])
         self.finish()
-
-    def _check_weixin_account(self, appid, openid):
-        # _user = account.get_account_by_openid(openid)
-        _user = account.get_account(appid=appid, weixin=openid)
-        if not _user:
-            account.create_weixin_account(appid, openid)
 
 class PageHandler(BaseHandler):
     '''
@@ -858,44 +818,6 @@ class ManagerHandler(AccountBaseHandler):
         rooms = sorted(rooms)
         return self.render_json_response(Code=200, Msg='OK', Rooms=rooms)
 
-class GroupsHandler(AccountBaseHandler):
-    '''
-        manager groups
-    '''
-    @_trace_wrapper
-    @_parse_body
-    def get(self, _id=None):
-        '''
-            get groups or special group details
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-        if _id:
-            # get special group
-            record = account.get_group(_id)
-            return self.render_json_response(Code=200, Msg='OK', group=record)
-        else:
-            records= account.get_groups()
-            return self.render_json_response(Code=200, Msg='OK', groups=records)
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self):
-        '''
-            create new groups
-        '''
-        token = self.get_argument('token')
-        manager = self.get_argument('manager')
-        self.check_token(manager, token)
-
-        name = self.get_argument('name')
-        note = self.get_argument('note')
-
-        account.create_groups(name, note)
-
-        self.render_json_response(Code=200, Msg='OK') 
-
 class TestHandler(BaseHandler):
     @_trace_wrapper
     def post(self):
@@ -1028,25 +950,6 @@ class AccountHistoryHandler(AccountBaseHandler):
 
         self.render_json_response(**OK)
 
-class MergeHandler(AccountBaseHandler):
-    '''
-    '''
-    @_trace_wrapper
-    @_parse_body
-    def post(self, user):
-        '''
-            app account merge mac(account)
-        '''
-        token = self.get_argument('token')
-        self.check_token(user, token)
-        mask = int(self.get_argument('mask'))
-        uuid = self.get_argument('uuid')
-        _id = account.merge_account(user, uuid, mask)
-        _user = account.get_bd_account(_id)
-
-        token = util.token(user)
-        return self.render_json_response(Code=200, Msg='OK', Token=token, **_user)
-        
 class BindHandler(AccountHandler):
     '''
     '''
@@ -1429,181 +1332,17 @@ class RegisterHandler(BaseHandler):
     def post(self):
         mask = int(self.get_argument('mask'))
         uuid = self.get_argument('uuid')
-        _account = account.get_account(uuid=uuid)
-        _id = ''
-        if not _account:
-            # can't found, create new account
-            _id = account.create_app_account(uuid, mask)
-        else:
-            _id = _account['id']
-        _user = account.get_bd_account(_id)
+        _user = account.check_app_account(uuid, mask)
+        # _account = account.get_account(uuid=uuid)
+        # _id = ''
+        # if not _account:
+        #     # can't found, create new account
+        #     _id = account.create_app_account(uuid, mask)
+        # else:
+        #     _id = _account['id']
+        # _user = account.get_bd_account(_id)
         
         return self.render_json_response(Code=200, Msg='OK', **_user)
-
-#***************************************************
-#
-#   
-#     Private network handler
-#
-#
-#****************************************************
-class NSManagerHandler(BaseHandler):
-    '''
-    '''
-    # def get(self):
-    #     pass
-
-    # def put(self):
-    #     pass
-
-    @_trace_wrapper
-    @_parse_body
-    def post(self):
-        '''
-            manager account login
-            password: md5(password)
-            admin : 
-                1 : super manager
-                1<<1 : bidong manager
-                1<<2 : nansha manager
-        '''
-        manager = self.get_argument('manager')
-        password = self.get_argument('password')
-        manager = account.get_manager(manager)
-        if not manager:
-            raise HTTPError('404', reason='manager account can\'t found')
-        pw_md5 = util.md5(manager['password']).hexdigest()
-        if password not in (pw_md5, manager['password']):
-            raise HTTPError('401', reason='wrong password')
-
-        # user & password passed
-        token = util.token(manager['user'])
-
-        self.render_json_response(token=token, **OK)
-
-class PNHolderHandler(BaseHandler):
-    '''
-        private network holder operator
-    '''
-    def check_user(self):
-        '''
-        '''
-        user = self.get_argument('user', '') or self.get_argument('manager', '')
-        if not user:
-            raise HTTPError(400)
-        if user not in ('admin', ):
-            raise HTTPError(403, reason='No privilege')
-
-
-    @_trace_wrapper
-    @_check_token
-    @_parse_body
-    def post(self, pn):
-        '''
-            create private network
-        '''
-        self.check_user()
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        if not kwargs:
-            raise HTTPError(400)
-        if 'pn' not in kwargs:
-            raise HTTPError(400)
-
-        account.create_pn(**kwargs)
-
-        self.render_json_response(**OK)
-
-    @_trace_wrapper
-    @_check_token
-    @_parse_body
-    def put(self, pn):
-        '''
-        '''
-        self.check_user()
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        pn = kwargs.pop('pn')
-        if not kwargs:
-            raise HTTPError(400)
-
-        account.update_pn(pn, **kwargs)
-        self.render_json_response(**OK)
-
-    # @_trace_wrapper
-    # @_check_token
-    # @_parse_body
-    # def delete(self, pn):
-    #     self.check_user()
-    #     pass
-
-class PNAccountHandler(BaseHandler):
-    '''
-        manager edit private network's employees
-    '''
-    @_trace_wrapper
-    @_check_token
-    @_parse_body
-    def get(self, holder, employee=None):
-        kwargs = {}
-        if employee:
-            kwargs['id'] = employee
-        else:
-            kwargs['mobile'] = self.get_argument('mobile')
-
-        record = account.get_pn_account(holder, **kwargs)
-        if not record:
-            raise HTTPError(404)
-
-        self.render_json_response(Code=200, Msg='OK', **record)
-
-
-    @_trace_wrapper
-    @_check_token
-    @_parse_body
-    def post(self, holder, employee=None):
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        if not kwargs:
-            raise HTTPError(400)
-
-        _id = account.add_pn_account(holder, **kwargs)
-        
-        logger.info('add new employee successfully(id:{}, mobile:{})'.format(_id, kwargs['mobile']))
-        self.render_json_response(id=_id, **OK)
-
-    @_trace_wrapper
-    @_check_token
-    @_parse_body
-    def put(self, holder, employee):
-        kwargs = {key:value[0] for key,value in self.request.arguments.iteritems()}
-        kwargs.pop('token')
-        kwargs.pop('manager')
-
-        if not kwargs:
-            raise HTTPError(400)
-
-        account.update_pn_account(holder, employee, **kwargs)
-
-        logger.info('update {}-{}\'s info'.format(holder, employee))
-
-        self.render_json_response(**OK)
-
-    @_trace_wrapper
-    @_check_token
-    @_parse_body
-    def delete(self, holder, employee):
-        mobile = self.get_argument('mobile')
-        account.delete_pn_account(holder, mobile) 
-        logger.info('delete {}\'s employee : (id:{}, mobile:{})'.format(holder, employee, mobile))
-
-        self.render_json_response(**OK)
 
 
 _DEFAULT_BACKLOG = 128

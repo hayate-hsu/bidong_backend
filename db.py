@@ -125,222 +125,9 @@ class Store():
 
     # *********************************************
     #
-    # group operator
-    #
-    # *********************************************
-    def create_group(self, name, note):
-        '''
-            name : unique index
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'insert into groups (name, note) values("{}", "{}")'.format(name, note)
-            cur.execute(sql)
-            conn.commit()
-
-    def get_group(self, _id):
-        '''
-        '''
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from groups where id = {}'.format(_id)
-            cur.execute(sql)
-            return cur.fetchone()
-
-    def get_groups(self):
-        '''
-            get groups and sorted ascending
-        '''
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from groups order by id'
-            cur.execute(sql)
-            results = cur.fetchall()
-            return results if results else []
-
-    def create_gmtype(self, group, name):
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'insert into gmtype (group, name) values({}, "{}")'.format(group, name)
-            cur.execute(sql)
-            conn.commit()
-
-    def get_gmtype(self, group, _id):
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from gmtype where id = {} and groups = {}'.format(_id, group)
-            cur.execute(sql)
-            return cur.fetchone()
-
-    def get_gmtypes(self, group):
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from gmtype where groups = {} order by id'.format(group)
-            cur.execute(sql)
-            results = cur.fetchall()
-            return results if results else []
-
-    def delete_gmtype(self, group, _id):
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'delete from gmtype where id = {} and groups = {}'.format(_id, group)
-            cur.execute(sql)
-            conn.commit()
-
-
-    # *********************************************
-    #
-    # group operator
-    #
-    # *********************************************
-    def create_manager(self, **kwargs):
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            key_str = ', '.join(kwargs.keys())
-            value_str = ', '.join(['"{}"'.format(item) for item in kwargs.values()])
-            sql = 'insert into manager ({}) values({})'.format(key_str, value_str)
-            cur.execute(sql)
-            conn.commit()
-
-    def update_manager(self, user, **kwargs):
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            modify_str = ', '.join('{} = "{}"'.format(key,value) for key,value in kwargs.iteritems())
-            sql = 'update manager set {} where user = "{}"'.format(modify_str, user)
-            cur.execute(sql)
-            conn.commit()
-
-    def delete_manager(self, user):
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'delete from manager where user = "{}"'.format(user)
-            cur.execute(sql)
-            conn.commit()
-
-    def get_manager(self, user, password):
-        with Cursor(self.dbpool) as cur:
-            if password:
-                sql = 'select * from manager where user = "{}" and password="{}"'.format(user, password)
-            else:
-                sql = 'select * from manager where user = "{}"'.format(user)
-            cur.execute(sql)
-            return cur.fetchone()
-
-    def get_managers(self):
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from manager'
-            cur.execute(sql)
-            results = cur.fetchall()
-
-            return results if results else []
-
-    # *********************************************
-    #
     # message operator
     #
     # *********************************************
-    def add_section(self, name):
-        '''
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'insert into section (name) values("{}")'.format(name)
-            cur.execute(sql)
-            conn.commit()
-
-    def delete_section(self, _id):
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'delete from section where id={}'.format(_id)
-            cur.execute(sql)
-            conn.commit()
-
-    def get_section(self, _id):
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from section where id={}'.format(_id)
-            cur.execute(sql)
-            return cur.fetchone()
-
-    def get_sections(self):
-        with Cursor(self.dbpool) as cur:
-            sql = 'select * from section'
-            cur.execute(sql)
-            results = cur.fetchall()
-            return results if results else []
-
-    def create_message(self, **kwargs):
-        '''
-            create new message
-            each message distinguished by id [md5(author, title, subtitle, content)]
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            key_str = ', '.join(kwargs.keys())
-            value_str = ', '.join(["'{}'".format(item) for item in kwargs.values()])
-            sql = 'insert into message ({}) values({})'.format(key_str, value_str)
-            cur.execute(sql)
-            conn.commit()
-
-    def update_message(self, _id, **kwargs):
-        '''
-            update message's property
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            modify_str = ', '.join("{} = '{}'".format(key,value) for key,value in kwargs.iteritems())
-            sql = 'update message set {} where id = "{}"'.format(modify_str, _id)
-            cur.execute(sql)
-            conn.commit()
-
-    def delete_message(self, _id):
-        '''
-            delete special message
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'delete from message where id = "{}"'.format(_id)
-            cur.execute(sql)
-            conn.commit()
-
-    def get_message(self, _id):
-        '''
-            get special message
-        '''
-        with Cursor(self.dbpool) as cur:
-            sql = '''select message.*, section.name as section from message, section 
-            where message.id="{}" and message.section = section.id'''.format(_id)
-            cur.execute(sql)
-            return cur.fetchone()
-
-    def get_messages(self, groups, mask, isimg, gmtype, label, pos, nums=10):
-        '''
-            id title subtitle section mask author groups status ctime content image
-            get groups's messages excelpt content filed
-            order by ctime desc 
-            groups : message's group
-            mask : message type (combine by bit operator)
-            pos : where to get special messages
-            isimg : search messages which image <> '';
-        '''
-        with Cursor(self.dbpool) as cur:
-            filters = 'message.id, message.title, message.subtitle, message.mask, message.author, message.groups, message.status, message.ctime, message.image'
-            sql = ''
-            gmtype = 'message.gmtype = {} and '.format(gmtype) if gmtype else ''
-            isimg = 'message.image <> "" and '.format(isimg) if isimg else ''
-            label = " and label like'%{}%'".format(label) if label else ''
-
-            if mask:
-                sql = '''select {}, section.name as section from message, section 
-                where {}{}message.groups = {} and message.mask & {} = {} and 
-                message.section = section.id order by message.status desc, message.ctime desc limit {},{}
-                '''.format(filters, gmtype, isimg, groups, __MASK__, mask, pos, nums)
-            else:
-                # doesn't check message type
-                sql = '''select {}, section.name as section from message, section 
-                where {}{}message.groups = {} and message.section = section.id{} 
-                order by message.status desc, message.ctime desc limit {},{}
-                '''.format(filters, gmtype, isimg, groups, label, pos, nums)
-
-            cur.execute(sql)
-            results = cur.fetchall()
-            return results if results else []
-
     def list_bas(self):
         '''
             Get ac lists
@@ -358,29 +145,19 @@ class Store():
             bas = cur.fetchone()
             return bas
 
-    # def get_manager(self, user, mask):
-    #     '''
-    #         maks (binary mask)
-    #             0 : admin    # bit 0 set or unset 
-    #             1 : bidong
-    #             2 : nansha
-    #     '''
-    #     with Cursor(self.dbpool) as cur:
-    #         sql = ''
-    #         if mask == 0:
-    #             sql = 'select * from manager where user = "{}"'.format(user)
-    #         else:
-    #             sql = 'select * from manager where user = "{}" and mask & 1<<{}'.format(user, mask)
-    #         cur.execute(sql)
-    #         return cur.fetchone()
-
     def get_account(self, **kwargs):
         '''
             get account's info
         '''
         with Cursor(self.dbpool) as cur:
+            mask = kwargs.pop('mask', 0)
             query_str = self._combine_query_kwargs(**kwargs)
-            sql = 'select * from account where {}'.format(query_str)
+            if mask:
+                pass
+            else:
+                sql = '''select bd_account.*, account.mask as amask from bd_account 
+                right join account on bd_account.user=cast(account.id as char)  
+                where {}'''.format(query_str)
             cur.execute(sql)
             return cur.fetchone()
 
@@ -389,20 +166,57 @@ class Store():
             conn.commit()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             query_str = self._combine_query_kwargs(**kwargs)
-            sql = 'select * from account where {}'.format(query_str)
+            sql = '''select bd_account.*, account.mask as amask from bd_account 
+            right join account on bd_account.user=cast(account.id as char) 
+            where {}'''.format(query_str)
             cur.execute(sql)
             return cur.fetchone()
 
-    def get_account_by_mobile_or_mac(self, mobile, mac):
+    def get_account_by_uuid(self, uuid, mask):
         with Cursor(self.dbpool) as cur:
-            cur.execute('select * from account where mobile="{}" or (mask>>6&1 and uuid="{}")'.format(mobile, mac))
+            # search account by uuid
+            sql = '''select bd_account.*, account.uuid from bd_account 
+            right join account on bd_account.user=cast(account.id as char) 
+            where account.uuid="{}"'''.format(uuid)
+            cur.execute(sql)
             result = cur.fetchone()
             if result:
-                cur.execute('select * from bd_account where user="{}"'.format(result['id']))
+                return result
+
+            if mask and mask>>6&1:
+                sql = '''select bd_account.*, account.uuid from bd_account 
+                right join mac_history on bd_account.user=mac_history.user
+                left join account on bd_account.user=cast(account.id as char)
+                where mac_history.mac="{}" order by account.ctime'''.format(uuid)
+                cur.execute(sql)
+                return cur.fetchone()
+            return None
+
+    def get_account_by_mobile_or_mac(self, mobile, mac):
+        with Cursor(self.dbpool) as cur:
+            # search account by mobile
+            filters = ''
+            if mobile:
+                filters = 'account.mobile="{}"'.format(mobile)
+                sql = '''select bd_account.*, account.mobile as amobile from bd_account 
+                right join account on bd_account.user=cast(account.id as char)  
+                where {}'''.format(filters)
+                cur.execute(sql)
+
                 result = cur.fetchone()
+                if result:
+                    return result
+            
+            # search account by mac_history
+            if mac:
+                sql = '''select bd_account.*, account.mobile as amobile from bd_account 
+                right join mac_history on bd_account.user=mac_history.user 
+                left join account on bd_account.user=cast(account.id as char) 
+                where mac_history.mac="{}" order by account.ctime'''.format(mac)
+                cur.execute(sql)
+                return cur.fetchone()
 
-            return result
-
+            return None
 
     def update_account(self, user, **kwargs):
         '''
@@ -411,9 +225,15 @@ class Store():
             # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             if kwargs:
-                modify_str = ', '.join('{} = "{}"'.format(key, value) for key,value in kwargs.iteritems())
+                modify_str = ', '.join(['{} = "{}"'.format(key, value) for key,value in kwargs.iteritems()])
                 sql = 'update account set {} where id = {}'.format(modify_str, user) 
                 cur.execute(sql)
+
+                mobile = kwargs.get('mobile', '')
+                if mobile:
+                    sql = 'update bd_account set mobile={} where user="{}"'.format(mobile, user)
+                    cur.execute(sql)
+
                 conn.commit()
 
 
@@ -675,16 +495,6 @@ class Store():
                     cur.execute(sql)
             conn.commit()
 
-    # def get_holder_rooms(self, holder):
-    #     '''
-    #     '''
-    #     with Cursor(self.dbpool) as cur:
-    #         sql = 'select room from holder_room where holder = "{}"'.format(holder)
-    #         cur.execute(sql)
-    #         results = cur.fetchall()
-
-    #         return results if results else ()
-
     def remove_holder_room(self, holder, room):
         '''
         '''
@@ -742,71 +552,76 @@ class Store():
                     cur.execute(sql)
             conn.commit()
 
-    def add_user(self, user, password, appid='', mobile='', ends=2**5):
+    def add_user(self, user, password, appid='', tid='', mobile='', ends=2**5):
         '''
             user : uuid or weixin openid
             password : user encrypted password
-            appid : ''
             ends : special the end type         data
                 0 : unknown                     
-                2^5 : weixin        opendid
-                2^6 : app (android) opendid or other unique id 
-                2^7 : app (ios)
-                2^8 : base mobile
-                2**9: user pay by time
+                2^5 : weixin                      opendid
+
+                2^6 : app(android)                opendid or other unique id 
+                2^7 : app(ios)
+                2^8 : mobile (verify mobile number)
 
                 2**28 : acount forzened
                 # 4 : web                         token & account
         '''
         with Connect(self.dbpool) as conn:
-            # cur = conn.cursor()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             now = datetime.datetime.now()
             expired = now + datetime.timedelta(hours=6)
             now = now.strftime('%Y-%m-%d %H:%M:%S')
             expired = expired.strftime('%Y-%m-%d %H:%M:%S')
-            sql = ''
+            sql, filters = '', ''
             column = 'uuid'
-            mask = 0 + 2**2 + 2**5
             if ends>>6 & 1:
+                weixin, uuid = '', user
                 mask = 0 + 2**2 + 2**6
-                sql = '''insert into account (uuid, mask, ctime) 
-                values ("{}", {}, "{}")'''.format(user, mask, now)
+                sql = 'insert into account (uuid, mask) values ("{}", {})'.format(user, mask)
+                filters = 'account.uuid="{}" and account.mask={}'.format(user, mask)
             elif ends>>7 & 1:
                 mask = 0 + 2**2 + 2**7
-                sql = '''insert into account (uuid, mask, ctime) 
-                values ("{}", {}, "{}")'''.format(user, mask, now)
+                sql = 'insert into account (uuid, mask) values ("{}", {})'.format(user, mask)
+                filters = 'account.uuid="{}" and account.mask={}'.format(user, mask)
             elif ends>>8 & 1:
                 column = 'mobile'
-                user = mobile
                 mask = 0 + 2**2 + 2**8
                 sql = 'insert into account (mobile, mask) values ("{}", {})'.format(mobile, mask)
+                filters = 'account.mobile="{}" and account.mask={}'.format(user, mask)
             elif (ends>>5 & 1) and appid:
                 # from weixin
                 column = 'weixin'
-                sql = '''insert into account (appid, weixin, mask, ctime) 
-                values ("{}", "{}", {}, "{}")'''.format(appid, user, mask, now)
-            else:
-                raise ValueError(msg='Unknown platform type,{} {}'.format(appid, ends))
+                mask = 0 + 2**2 + 2**5
+                sql = 'insert into account (appid, weixin, tid, mask)values ("{}", "{}", "{}", {})'.format(appid, user, tid, mask)
+                filters = 'account.weixin="{}" and account.appid="{}" and account.mask={}'.format(user, appid, mask)
 
             cur.execute(sql)
-            
+
             sql = 'select id from account where {} = "{}"'.format(column, user)
             if appid:
                 sql = sql + ' and appid="{}"'.format(appid)
 
             cur.execute(sql)
             user = cur.fetchone()
-
+            print(user)
+            #
+            # mask = mask + 2**9
             coin = 60
+            user = str(user['id'])
 
-            sql = '''insert into bd_account (user, password, mask, coin, expired, holder, ends) 
-            values("{}", "{}", {}, {}, "{}", 0, 2)
-            '''.format(str(user['id']), password, mask, coin, expired)
+            sql = '''insert into bd_account (user, password, mask, coin, expired, holder, ends, mobile) 
+            values("{}", "{}", {}, {}, "{}", 0, 2, "{}")
+            '''.format(user, password, mask, coin, expired, mobile)
             cur.execute(sql)
             conn.commit()
-            return user['id']# , password, mask, time_length
 
+            sql = '''select bd_account.* from bd_account 
+            right join account on bd_account.user=cast(account.id as char) 
+            where {}'''.format(filters)
+            cur.execute(sql)
+            user = cur.fetchone()
+            return user
 
     def update_user2(self, user, **kwargs):
         '''
@@ -1198,41 +1013,6 @@ class Store():
             cur.execute(sql)
             conn.commit()
 
-    def merge_app_account(self, _id, user):
-        '''
-            merge mac account to app account
-            _id : new created app account
-            user : mac address remove ':'
-        '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            sql = 'select * from bd_account where user="{}"'.format(user)
-            cur.execute(sql)
-            _user = cur.fetchone()
-            if _user:
-                # delete mac history record
-                sql = 'delete from mac_history where user="{}"'.format(user)
-                cur.execute(sql)
-                # delete bd_account
-                sql = 'delete from bd_account where user="{}"'.format(user)
-                cur.execute(sql)
-
-                # update app account's expire_date & coin
-                sql = '''update bd_account set expired="{}", coin={} 
-                where user="{}"'''.format(_user['expired'], _user['coin'], _id)
-                cur.execute(sql)
-
-                # update binded account
-                sql = 'update bind set weixin="{}" where weixin="{}"'.format(_id, user)
-                cur.execute(sql)
-
-                if _user['mask'] & 1<<16:
-                    # update nansha employee mapped
-                    sql = 'update bind set renter="{}" where renter="{}"'.format(_id, user)
-                    cur.execute(sql)
-
-                conn.commit()
-    
     #**************************************************
     #
     #

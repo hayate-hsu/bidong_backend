@@ -599,15 +599,8 @@ class MobileHandler(BaseHandler):
             raise HTTPError(400, reason='invalid mobile number')
         ssid, is_by = '', False
         pn = self.get_argument('pn', '')
-        if pn:
-            # check private network, if existed pn, return ssid & pn 
-            record = account.get_pn_account(pn, mobile=mobile)
-            if record:
-                ssid = record['ssid']
-            # else:
-            #     raise HTTPError(403, reason='no privilege')
-            if pn == '29475':
-                is_by = True
+        if pn and pn == '29475':
+            is_by = True
 
         verify = util.generate_verify_code()
         mask = int(self.get_argument('mask', 0))
@@ -718,6 +711,8 @@ class RegisterHandler(BaseHandler):
             {uuid:mac, mask:mask}
         1<<7: ios
             {uuid:uuid, mask:mask}<F8> 
+        1<<8: mobile (web)
+            {mobile:mobile, }
 
     '''
     @_trace_wrapper
@@ -738,14 +733,7 @@ class RegisterHandler(BaseHandler):
             logger.info('{}\'s {} avaiabled pns: {}'.format(_user['user'], mobile, pns))
         else:
             uuid = self.get_argument('uuid')
-            _account = account.get_account(uuid=uuid)
-            _id = ''
-            if not _account:
-                # can't found, create new account
-                _id = account.create_app_account(uuid, mask)
-            else:
-                _id = _account['id']
-            _user = account.get_bd_account(_id)
+            _user = account.check_app_account(uuid, mask)
         
         return self.render_json_response(Code=200, Msg='OK', **_user)
 
