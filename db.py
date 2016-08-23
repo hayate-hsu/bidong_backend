@@ -195,12 +195,10 @@ class Store():
     def get_account_by_mobile_or_mac(self, mobile, mac):
         with Cursor(self.dbpool) as cur:
             # search account by mobile
-            filters = ''
             if mobile:
-                filters = 'account.mobile="{}"'.format(mobile)
                 sql = '''select bd_account.*, account.mobile as amobile from bd_account 
                 right join account on bd_account.user=cast(account.id as char)  
-                where {}'''.format(filters)
+                where account.mobile="{}"'''.format(mobile)
                 cur.execute(sql)
 
                 result = cur.fetchone()
@@ -631,6 +629,11 @@ class Store():
             update_str = ', '.join(['{}="{}"'.format(key, value) for key,value in kwargs.iteritems()])
             sql = 'update bd_account set {} where user="{}"'.format(update_str, user)
             cur.execute(sql)
+
+            if 'mobile' in kwargs:
+                sql = 'update account set mobile="{}" where id={}'.format(kwargs['mobile'], user)
+                cur.execute(sql)
+
             conn.commit()
 
     def remove_mac_history(self, user):
