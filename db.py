@@ -156,7 +156,7 @@ class Store():
                 pass
             else:
                 sql = '''select bd_account.*, account.mask as amask from bd_account 
-                right join account on bd_account.user=cast(account.id as char)  
+                left join account on bd_account.user=cast(account.id as char)  
                 where {}'''.format(query_str)
             cur.execute(sql)
             return cur.fetchone()
@@ -167,7 +167,7 @@ class Store():
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             query_str = self._combine_query_kwargs(**kwargs)
             sql = '''select bd_account.*, account.mask as amask from bd_account 
-            right join account on bd_account.user=cast(account.id as char) 
+            left join account on bd_account.user=cast(account.id as char) 
             where {}'''.format(query_str)
             cur.execute(sql)
             return cur.fetchone()
@@ -176,7 +176,7 @@ class Store():
         with Cursor(self.dbpool) as cur:
             # search account by uuid
             sql = '''select bd_account.*, account.uuid from bd_account 
-            right join account on bd_account.user=cast(account.id as char) 
+            left join account on bd_account.user=cast(account.id as char) 
             where account.uuid="{}"'''.format(uuid)
             cur.execute(sql)
             result = cur.fetchone()
@@ -185,7 +185,7 @@ class Store():
 
             if mask and mask>>6&1:
                 sql = '''select bd_account.*, account.uuid from bd_account 
-                right join mac_history on bd_account.user=mac_history.user
+                left join mac_history on bd_account.user=mac_history.user
                 left join account on bd_account.user=cast(account.id as char)
                 where mac_history.mac="{}" order by account.ctime'''.format(uuid)
                 cur.execute(sql)
@@ -197,7 +197,7 @@ class Store():
             # search account by mobile
             if mobile:
                 sql = '''select bd_account.*, account.mobile as amobile from bd_account 
-                right join account on bd_account.user=cast(account.id as char)  
+                left join account on bd_account.user=cast(account.id as char)  
                 where account.mobile="{}"'''.format(mobile)
                 cur.execute(sql)
 
@@ -208,7 +208,7 @@ class Store():
             # search account by mac_history
             if mac:
                 sql = '''select bd_account.*, account.mobile as amobile from bd_account 
-                right join mac_history on bd_account.user=mac_history.user 
+                left join mac_history on bd_account.user=mac_history.user 
                 left join account on bd_account.user=cast(account.id as char) 
                 where mac_history.mac="{}" order by account.ctime'''.format(mac)
                 cur.execute(sql)
@@ -615,7 +615,7 @@ class Store():
             conn.commit()
 
             sql = '''select bd_account.* from bd_account 
-            right join account on bd_account.user=cast(account.id as char) 
+            left join account on bd_account.user=cast(account.id as char) 
             where {}'''.format(filters)
             cur.execute(sql)
             user = cur.fetchone()
