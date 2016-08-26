@@ -567,6 +567,19 @@ class WeiXinHandler(BaseHandler):
                                '''\xe8\xb4\xa6\xe5\x8f\xb7 : {}\n\xe5\xaf\x86\xe7\xa0\x81 : {}\n\xe5\x8f\xaf\xe7\x94\xa8\xe4\xb8\x8a\xe7\xbd\x91\xe6\x97\xb6\xe9\x95\xbf: {}\xe5\xa4\xa9 + {}'''.format(user['user'], user['password'], days, hours))
         self.finish(data)
 
+    def welcome_response(self, request, user):
+        response = '''<xml>
+        <ToUserName><![CDATA[{}]]></ToUserName>
+        <FromUserName><![CDATA[{}]]></FromUserName>
+        <CreateTime>{}</CreateTime>
+        <MsgType><![CDATA[text]]></MsgType>
+        <Content><![CDATA[{}]]></Content>
+        </xml>
+        '''
+        data = response.format(request['FromUserName'], request['ToUserName'], int(time.time()), 
+                               _const['welcome_message'].format(user['user'], user['password']))
+        self.finish(data)
+
     @_trace_wrapper
     @_parse_body
     def post(self, serve='bidong'):
@@ -590,7 +603,8 @@ class WeiXinHandler(BaseHandler):
                     return self.xml_response(request, _user)
             if request['Event'] == 'subscribe':
                 # check FromUserName & ToUserName 
-                account.check_weixin_account(appid, request['FromUserName'])
+                _user = account.check_weixin_account(appid, request['FromUserName'])
+                return self.welcome_response(request, _user)
                 return self.finish()
             if request['Event'] == 'unsubscribe':
                 account.remove_weixin_account(appid, request['FromUserName'])
