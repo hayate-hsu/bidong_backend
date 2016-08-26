@@ -6,7 +6,7 @@ message = {
 
 'account':'上网账号: {}\n账号密码： {}\n\n',
 
-'welcome':'欢迎关注壁咚无线\n你的上网账号: {}\n密码: {}\n\n<a href="http://wnl.bidongwifi.com:9899/help.html">上网帮助，请点这里</a>\n\n',
+'welcome':'欢迎关注壁咚无线!\n\n你的上网账号:\t{}\n密码:\t{}\n\n<a href="http://wnl.bidongwifi.com:9899/help.html">上网帮助，请点这里</a>\n\n',
 
 'msg_template':'动态验证码{}，用于身份验证或上网认证，有效期10分钟，请勿泄漏。',
 }
