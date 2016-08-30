@@ -426,23 +426,15 @@ class WeiXinViewHandler(BaseHandler):
         
         result = json_decoder(response.body)
 
-        self.check_weixin_account(configure['appid'], result['openid'])
+        _user = account.check_weixin_account(configure['appid'], result['openid'])
 
-        self.dispatch[action](configure['appid'], result['openid'])
+        self.dispatch[action](_user, configure['appid'], result['openid'])
 
-
-    def auto_login(self, appid, openid):
-        _user = account.check_weixin_account(appid=appid, weixin=openid)
-        if not _user:
-            raise HTTPError(404, reason='account not existed')
-
+    def auto_login(self, _user, appid, openid):
         token = util.token(_user['user'])
         self.redirect('/account/{}?token={}'.format(_user['user'], token))
 
-    def get_holder(self, appid, openid):
-        _user = account.check_weixin_account(appid=appid, weixin=openid)
-        if not _user:
-            raise HTTPError(404, reason='account not existed')
+    def get_holder(self, _user, appid, openid):
         if not _user['amask']>>1 & 1:
             return self.render('error.html', Msg=_const[453])
         token = util.token(_user['user'])
@@ -450,16 +442,12 @@ class WeiXinViewHandler(BaseHandler):
         self.redirect('/holder/{}?token={}'.format(_user['user'], token))
 
     @_trace_wrapper
-    def earn_coin(self, appid, openid):
-        _user = account.get_account(appid=appid, weixin=openid)
-        if not _user:
-            return self.render('error.html', Msg=_const[404])
-
+    def earn_coin(self, _user, appid, openid):
         token = util.token(_user['user'])
         self.redirect('/getdbi.html?user={}&token={}'.format(_user['user'], token))
 
     @_trace_wrapper
-    def join_us(self, appid, openid):
+    def join_us(self, _user, appid, openid):
         self.render('joinus.html', appid=appid, Openid=openid)
 
 class WeiXinHandler(BaseHandler):
@@ -577,7 +565,7 @@ class WeiXinHandler(BaseHandler):
         </xml>
         '''
         data = response.format(request['FromUserName'], request['ToUserName'], int(time.time()), 
-                               _const['welcome_message'].format(user['user'], user['password']))
+                               _const['welcome'].format(user['user'], user['password']))
         self.finish(data)
 
     @_trace_wrapper

@@ -155,7 +155,8 @@ class Store():
             if mask:
                 pass
             else:
-                sql = '''select bd_account.*, account.mask as amask from bd_account 
+                sql = '''select bd_account.*, account.mask as amask, account.realname, account.address
+                from bd_account 
                 left join account on bd_account.user=cast(account.id as char)  
                 where {}'''.format(query_str)
             cur.execute(sql)
@@ -166,7 +167,8 @@ class Store():
             conn.commit()
             cur = conn.cursor(MySQLdb.cursors.DictCursor)
             query_str = self._combine_query_kwargs(**kwargs)
-            sql = '''select bd_account.*, account.mask as amask from bd_account 
+            sql = '''select bd_account.*, account.mask as amask, account.realname, account.address
+            from bd_account 
             left join account on bd_account.user=cast(account.id as char) 
             where {}'''.format(query_str)
             cur.execute(sql)
@@ -514,10 +516,16 @@ class Store():
         '''
         '''
         with Cursor(self.dbpool) as cur:
-            sql = 'select user, password, mask, expired, ends from bd_account where holder = "{}"'.format(holder)
+            # get holders
+            sql = '''select bd_account.*, account.realname, account.address from bd_account 
+            left join account on bd_account.user=cast(account.id as char) 
+            where bd_account.holder="{}"'''.format(holder)
+            cur.execute(sql)
+            bd_account = cur.fetchone()
+            sql = 'select user, password, mask, expired, ends from bd_account where holder = "{}" and user<>cast(holder as char)'.format(holder)
             cur.execute(sql)
             results = cur.fetchall()
-            return results
+            return bd_account, results
 
     def update_renter(self, user, **kwargs):
         with Connect(self.dbpool) as conn:

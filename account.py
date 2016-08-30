@@ -169,24 +169,11 @@ def remove_holder_room(holder, rooms):
     db.remove_holder_room(holder, rooms)
 
 def get_renters(holder):
-    account = get_account(id=holder) 
-    results = db.get_holder_renters(holder)    
-    bd_account, renters = {}, []
-    for item in results:
-        if item['mask'] >>3 & 1:
-            bd_account = item
-            continue
-        item['room'] = item['user'].replace(str(holder), '')
-        if item['room']:
-            renters.append(item)
-    print(account, bd_account)
-    bd_account['realname'] = account['realname']
-    bd_account['address'] = account['address']
-    bd_account['mobile'] = account['mobile']
+    bd_account, renters = db.get_holder_renters(holder)    
     return bd_account, renters
 
 def get_account(**kwargs):
-    kwargs.pop('mask')
+    kwargs.pop('mask', 0)
     return db.get_account(**kwargs) or db.get_account2(**kwargs)
 
 def check_account_by_mobile_or_mac(mobile, mac):
@@ -239,7 +226,7 @@ def check_weixin_account(appid, openid):
     else:
         if _user['amask']>>28 & 1:
             _user['amask'] = _user['amask'] ^ 1<<28
-            db.update_account(_user['id'], mask=_user['amask'])
+            db.update_account(_user['user'], mask=_user['amask'])
 
     return _user
 
@@ -248,7 +235,7 @@ def remove_weixin_account(appid, openid):
 
     if _user:
         _user['amask'] = _user['amask'] | 1<<28
-        db.update_account(_user['id'], mask=_user['amask'])
+        db.update_account(_user['user'], mask=_user['amask'])
 
 def get_weixin_account(appid, openid):
     account = db.get_account(appid=appid, weixin=openid) or db.get_account2(appid=appid, weixin=openid)
