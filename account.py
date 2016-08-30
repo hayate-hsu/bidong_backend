@@ -170,6 +170,9 @@ def remove_holder_room(holder, rooms):
 
 def get_renters(holder):
     bd_account, renters = db.get_holder_renters(holder)    
+    holder = str(holder)
+    for item in renters:
+        item['room'] = item['user'].replace(holder, '')
     return bd_account, renters
 
 def get_account(**kwargs):
