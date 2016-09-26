@@ -617,6 +617,9 @@ class PageHandler(BaseHandler):
         #     page = page + '.html'
         # if page.startswith('manager.html'):
         #     return self.render('login_admin.html')        
+        user = self.get_argument('user', '')
+        if user:
+            return self.render(page, user=user)
         return self.render(page)
 
 class AccountBaseHandler(BaseHandler):
@@ -850,9 +853,18 @@ class AccountHandler(AccountBaseHandler):
     '''
         process bd account
     '''
+
     @_trace_wrapper
     @_parse_body
     def get(self, user):
+        appid = self.get_argument('appid', '')
+        if appid:
+            try:
+                account.get_appid(appid)
+            except:
+                appid = ''
+
+
         token = self.get_argument('token')
         self.check_token(user, token)
         _user, renters = None, None
@@ -864,10 +876,13 @@ class AccountHandler(AccountBaseHandler):
         days, hours = util.format_left_time(_user['expired'], _user['coin'])
 
         accept = self.request.headers.get('Accept', 'text/html')
+        ad_url = ''
+        if appid and appid=='bd49cb80ca838e11e6afe83464a91ab6a6':
+            ad_url = '/ads.html?user={}'.format(_user['user'])
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, days=days, hours=hours, **OK)
         else:
-            self.render('mybidong.html', token=token, 
+            self.render('mybidong.html', token=token, ad_url=ad_url, 
                         days=days, hours=hours, **_user)
     
     @_trace_wrapper

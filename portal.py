@@ -377,6 +377,28 @@ def _trace_wrapper(method):
             logger.info('<-- Out %s: <%s> -->\n\n', self.__class__.__name__, self.request.method)
     return wrapper
 
+def check_app_sign(method):
+    '''
+        check appid's sign if request arguments contains {appid:'', sign:''}
+    '''
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        appid = self.get_argument('appid', '')
+        arguments = {key:value[0] for key,value in self.request.arguments.iteritems()}
+        sign = kwargs.pop('sign', '')
+        if appid and sign:
+            record = account.get_appid(appid)
+            # kwargs['appkey'] = record['appkey']
+            data = u'&'.join([u'{}={}'.format(key, kwargs[key]) for key in sorted(arguments.keys())])
+            data = data + u'&appkey={}'.format(record['appkey'])
+
+            md5 = util.md5(data.encode('utf-8')).hexdigest()
+            if sign != md5:
+                raise HTTPError(403, reason='app sign check failed')
+
+        return method(self)
+    return wrapper
+
 class MainHandler(BaseHandler):
     '''
     '''
@@ -716,6 +738,7 @@ class RegisterHandler(BaseHandler):
 
     '''
     @_trace_wrapper
+    @check_app_sign
     @_parse_body
     def post(self):
         mask = int(self.get_argument('mask'))

@@ -6,11 +6,29 @@
 from tornado.web import HTTPError
 import datetime
 # import math
+import collections
 
 from MySQLdb import (IntegrityError)
 
 from db import db
 import util
+
+APP_PROFILE = collections.defaultdict(dict)
+
+def get_appid(appid):
+    assert appid
+    now = datetime.datetime.now()
+    if appid in APP_PROFILE and now < APP_PROFILE[appid]['expired']:
+        return APP_PROFILE[appid]
+
+    record = db.get_appid(appid)
+    if not record:
+        raise HTTPError(404, reason='Can\'t found app({}) profile'.format(appid))
+
+    expired = now + datetime.timedelta(days=1)
+    record['expired'] = expired
+    APP_PROFILE[appid] = record
+    return APP_PROFILE[appid]
 
 
 def update_version(mask, **kwargs):
@@ -49,7 +67,6 @@ def create_version(ver, mask, note):
         db.update_app_version(pt, newest=ver, least=ver, note=note)
     else:
         db.add_app_version(pt, ver, note)
-
 
 # ****************************************
 # 

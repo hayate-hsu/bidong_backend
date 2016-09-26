@@ -123,6 +123,11 @@ class Store():
             cur.execute('select * from app_ver where pt="{}"'.format(pt))
             return cur.fetchone()
 
+    def get_appid(self, appid):
+        with Cursor(self.dbpool) as cur:
+            cur.execute('select * from app where appid="{}"'.format(appid))
+            return cur.fetchone()
+
     # *********************************************
     #
     # message operator

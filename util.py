@@ -60,7 +60,7 @@ def check_codes(method):
         Decorator to check parameters.
         Encode unicode to utf-8 codes
     '''
-    functools.wraps(method)
+    @functools.wraps(method)
     def wrapper(*args, **kwargs):
         args = [arg.encode('utf-8', 'replace') if isinstance(arg, unicode) else arg for arg in args]
         for key,value in kwargs.iteritems():
@@ -216,3 +216,5 @@ def format_left_time(expired, coin):
         hours = '{:02d}:{:02d}'.format(int(times/3600), int(times%3600/60))
 
     return days, hours
+
+
