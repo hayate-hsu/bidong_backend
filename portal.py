@@ -557,8 +557,8 @@ class BindHandler(BaseHandler):
         
         account.update_account(user, mobile=mobile)
 
-        if pn and account.get_pn_account(pn, mobile=mobile):
-            account.bind_pn_account(pn, user, mobile)
+        # if pn and account.get_pn_account(pn, mobile=mobile):
+        #     account.bind_pn_account(pn, user, mobile)
 
         self.render_json_response(**OK)
 
@@ -569,8 +569,8 @@ class BindHandler(BaseHandler):
         
         # set '' to mobile field
         # account.update_account(user, mobile='')
-        if pn and account.get_pn_account(pn, mobile=mobile):
-            account.unbind_pn_account(pn, mobile)
+        # if pn and account.get_pn_account(pn, mobile=mobile):
+        #     account.unbind_pn_account(pn, mobile)
 
         self.render_json_response(**OK)
 
@@ -752,8 +752,8 @@ class RegisterHandler(BaseHandler):
             _user = account.check_account_by_mobile_or_mac(mobile, mac)
 
             # bind avaiable pn
-            pns = account.bind_avaiable_pns(_user['user'], mobile)
-            logger.info('{}\'s {} avaiabled pns: {}'.format(_user['user'], mobile, pns))
+            # pns = account.bind_avaiable_pns(_user['user'], mobile)
+            logger.info('{}\'s {} avaiabled pns:'.format(_user['user'], mobile))
         else:
             uuid = self.get_argument('uuid')
             _user = account.check_app_account(uuid, mask)
@@ -785,7 +785,8 @@ class PNSHandler(BaseHandler):
         mobile = self.get_argument('mobile')
         # pns = self.get_arguments('pns')
 
-        pns = account.bind_avaiable_pns(user, mobile)
+        pns = account.query_avaiable_pns(user, mobile)
+
 
         if not pns:
             raise HTTPError(404, reason='{},{} doesn\'t belong to any pns'.format(user, mobile))

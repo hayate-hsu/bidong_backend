@@ -393,10 +393,10 @@ def query_transfer(user):
 #
 #
 ##########################################################
-def query_avaiable_pns(mobile):
+def query_avaiable_pns(user, mobile):
     '''
     '''
-    return db.query_avaiable_pns(mobile)
+    return db.query_avaiable_pns(user, mobile)
 
 def bind_avaiable_pns(user, mobile):
     '''

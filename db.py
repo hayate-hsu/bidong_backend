@@ -392,8 +392,8 @@ class Store():
             record = cur.fetchone()
             if not record:
                 # can\'t found pn and ssid
-                # issys ispri
                 return 1, None
+                # issys ispri
             return 1, record
 
 
@@ -1036,63 +1036,62 @@ class Store():
     #
     #
     #**************************************************
-    def query_avaiable_pns(self, mobile):
+    def query_avaiable_pns(self, user, mobile):
         '''
         '''
         with Cursor(self.dbpool) as cur:
-            cur.execute('select * from pn_policy where ispri = 1')
-            pns = cur.fetchall()
-            cur.execute('select table_name from information_schema.tables where table_name like "pn__%"')
+            sql = '''select pn_policy.* from pn_policy 
+            right join information_schema.tables on concat('pn_', `pn`) = information_schema.tables.table_name 
+            where pn_policy.policy&2
+            '''
+            cur.execute(sql)
             tables = cur.fetchall()
 
-            tables = [item['table_name'] for item in tables]
-
-            # existed pn_***** tables
-            pns = [item for item in pns if 'pn_{}'.format(item['pn']) in tables]
-            
             results = []
-            for item in pns:
-                sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
+            for item in tables:
+                sql = 'select id from pn_{} where mobile="{}"'.format(item['pn'], mobile)
                 cur.execute(sql)
                 if cur.fetchone():
                     results.append(item)
+
 
             return results
 
     def bind_avaiable_pns(self, user, mobile):
         '''
         '''
-        with Connect(self.dbpool) as conn:
-            cur = conn.cursor(MySQLdb.cursors.DictCursor)
-            results = []
+        pass
+        # with Connect(self.dbpool) as conn:
+        #     cur = conn.cursor(MySQLdb.cursors.DictCursor)
+        #     results = []
 
-            cur.execute('select * from pn_policy where ispri = 1')
-            pns = cur.fetchall()
-            cur.execute('select table_name from information_schema.tables where table_name like "pn_%"')
-            tables = cur.fetchall()
+        #     cur.execute('select * from pn_policy where policy&2')
+        #     pns = cur.fetchall()
+        #     cur.execute('select table_name from information_schema.tables where table_name like "pn_%"')
+        #     tables = cur.fetchall()
 
-            tables = [item['table_name'] for item in tables]
+        #     tables = [item['table_name'] for item in tables]
 
-            pns = [item for item in pns if 'pn_{}'.format(item['pn']) in tables]
+        #     pns = [item for item in pns if 'pn_{}'.format(item['pn']) in tables]
 
 
-            for item in pns:
-                sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
-                cur.execute(sql)
-                if cur.fetchone():
-                    results.append(item)
+        #     for item in pns:
+        #         sql = 'select id from pn_{} where mobile = "{}"'.format(item['pn'], mobile)
+        #         cur.execute(sql)
+        #         if cur.fetchone():
+        #             results.append(item)
 
-            if results:
-                for item in results:
-                    sql = 'insert into pn_bind(user, holder, mobile) values("{}", {}, "{}")'.format(user, item['pn'], mobile)
-                    try:
-                        cur.execute(sql)
-                    except MySQLdb.IntegrityError:
-                        # existed bind pair
-                        pass
+        #     if results:
+        #         for item in results:
+        #             sql = 'insert into pn_bind(user, holder, mobile) values("{}", {}, "{}")'.format(user, item['pn'], mobile)
+        #             try:
+        #                 cur.execute(sql)
+        #             except MySQLdb.IntegrityError:
+        #                 # existed bind pair
+        #                 pass
 
-            conn.commit()
-            return results
+        #     conn.commit()
+        #     return results
 
     def  get_wx_config(self):
         '''
