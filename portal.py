@@ -737,12 +737,16 @@ class RegisterHandler(BaseHandler):
             {mobile:mobile, }
 
     '''
+    URL = 'http://14.23.171.10/'
+
     @_trace_wrapper
+    @tornado.gen.coroutine
     @check_app_sign
     @_parse_body
     def post(self):
         mask = int(self.get_argument('mask'))
         _user = {}
+        mobile = ''
         if mask>>8 & 1:
             # check account by mobile & mac address
             mobile = self.get_argument('mobile')
@@ -758,7 +762,24 @@ class RegisterHandler(BaseHandler):
             uuid = self.get_argument('uuid')
             _user = account.check_app_account(uuid, mask)
         
-        return self.render_json_response(Code=200, Msg='OK', **_user)
+        self.render_json_response(Code=200, Msg='OK', **_user)
+
+        existed = _user.get('existed', 1)
+        if existed == 0 and mobile:
+            # use new created, send sms (user, password) to user's mobile 
+            msg = _const['account_template'].format(_user['user'], _user['password'])
+            url = RegisterHandler.URL + 'notify'
+            msg = msg.decode('utf-8')
+            data = json_encoder({'msg':msg, 'mobile':mobile})
+            request = tornado.httpclient.HTTPRequest(url, method='POST', 
+                                 headers={'Content-Type':'application/json'}, 
+                                 body=data)
+
+            http_client = tornado.httpclient.AsyncHTTPClient() 
+            response = yield http_client.fetch(request)
+
+        # if response.code != 200:
+        #     raise response.error
 
 class PNSHandler(BaseHandler):
     '''
