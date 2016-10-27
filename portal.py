@@ -40,6 +40,8 @@ import time
 import datetime
 
 import logging
+            
+import urllib
 
 import xml.etree.ElementTree as ET
 
@@ -607,6 +609,7 @@ class MobileHandler(BaseHandler):
     '''
     URL = 'http://14.23.171.10/'
     BY_URL = 'http://120.27.144.245:9999/smshttp?act=sendmsg&unitid=101063&username=gzzt&passwd=5690dddfa28ae085d23518a035707282&msg={}&phone={}&port=&sendtime='
+    WEIMI_URL = 'http://api.weimi.cc/2/sms/send.html'
 
     @_trace_wrapper
     @tornado.gen.coroutine
@@ -619,10 +622,13 @@ class MobileHandler(BaseHandler):
         mobile = self.get_argument('mobile')
         if not self.check_mobile(mobile):
             raise HTTPError(400, reason='invalid mobile number')
-        ssid, is_by = '', False
+        ssid, is_by, is_pynx = '', False, False
         pn = self.get_argument('pn', '')
-        if pn and pn == '29475':
+        if pn == '29475':
             is_by = True
+        elif pn == '15914':
+            is_pynx = True
+
 
         verify = util.generate_verify_code()
         mask = int(self.get_argument('mask', 0))
@@ -640,11 +646,24 @@ class MobileHandler(BaseHandler):
             data = _const['msg_template'].format(verify)
             url = MobileHandler.BY_URL.format(data, mobile)
             request = tornado.httpclient.HTTPRequest(url, method='POST', body=b'')
+        elif is_pynx:
+            data = {
+                'uid':'3SSrNGX5O2eA',
+                'pas':'yq3skay4',
+                'mob': mobile,
+                'cid':'Qg3Aa9Z57kuq',
+                'p1' : verify,
+                'type':'json',
+            }
+            bdata = urllib.urlencode(data).encode('utf-8')
+            request = tornado.httpclient.HTTPRequest(MobileHandler.WEIMI_URL, method='POST', body=bdata)
         else:
             data = json_encoder({'mobile':mobile, 'code':verify})
             request = tornado.httpclient.HTTPRequest(MobileHandler.URL, method='POST', 
                                                      headers={'Content-Type':'application/json'}, 
                                                      body=data)
+
+        logger.info('send verify code: {} to mobile: {}, pn: {}'.format(verify, mobile, pn))
         http_client = tornado.httpclient.AsyncHTTPClient() 
         response = yield http_client.fetch(request)
         logger.info('response: {}'.format(response))
