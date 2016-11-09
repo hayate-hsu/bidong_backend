@@ -284,6 +284,9 @@ def unbind(weixin, user):
 def get_weixin_config():
     return db.get_wx_config()
 
+def get_user_onlines(user, mac):
+    return db.get_user_onlines(user, mac)
+
 ########################################################
 #
 #

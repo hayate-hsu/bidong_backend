@@ -832,6 +832,14 @@ class Store():
             cur.execute(sql)
             return cur.fetchone()
 
+    def get_user_onlines(self, user, mac):
+        with Cursor(self.dbpool) as cur:
+            sql = 'select nas_addr, acct_session_id, mac_addr, ap_mac, ssid, framed_ipaddr from online where user = "{}"'.format(user)
+            if mac:
+                sql = sql + ' and mac_addr = "{}"'.format(mac)
+            cur.execute(sql)
+            return cur.fetchall()
+
     def add_unauth_online(self, nas_addr, user, user_mac):
         with Connect(self.dbpool) as conn:
             # cur = conn.cursor()

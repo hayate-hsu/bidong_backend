@@ -21,7 +21,8 @@ DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 KEY = base64.b64encode(uuid.uuid5(uuid.NAMESPACE_X500, 'bidong wifi').hex)
 
 # _PASSWORD_ = '''23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ~!@#$^&*<>=+-_'''
-_PASSWORD_ = '''23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ'''
+# _PASSWORD_ = '''23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ'''
+_PASSWORD_ = '''23456789abcdefghjkmnpqrstuvwxyz'''
 
 _VERIFY_CODE_ = '1234567890'
 

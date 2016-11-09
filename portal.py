@@ -109,6 +109,8 @@ class Application(tornado.web.Application):
             (r'/ssid/(.*)$', WIFIHandler),
             (r'/cid/(.*)$', CIDHandler),
 
+            (r'/portal/user$', PortalHandler),
+
             # nansha interface
             # (r'/ns/manager', NSManagerHandler),
             # add/update/delete nansha employee
@@ -626,7 +628,7 @@ class MobileHandler(BaseHandler):
         pn = self.get_argument('pn', '')
         if pn == '29475':
             is_by = True
-        elif pn == '15914':
+        elif pn in ('15914', '59484') or self.request.remote_ip == '58.248.228.170' or self.request.remote_ip.startswith('14.215.'):
             is_pynx = True
 
 
@@ -738,6 +740,54 @@ class VersionHandler(BaseHandler):
         least = [int(item) for item in record['least'].split('.')]
         newest = [int(item) for item in record['newest'].split('.')]
         return ver>=newest, ver>=least
+
+class PortalHandler(BaseHandler):
+    '''
+        dispatcher portal request
+    '''
+
+    @_trace_wrapper
+    @tornado.gen.coroutine
+    @_parse_body
+    def delete(self):
+        manager = self.get_argument('manager', '') 
+        token = self.get_argument('token')
+
+        user = self.get_argument('user')
+        mac = self.get_argument('mac')
+        
+        manager = manager or user
+        
+        token,expired = token.split('|')
+        token2 = util.token2(manager, expired)
+        if token != token2:
+            raise HTTPError(400, reason='Abnormal token')
+
+        onlines = account.get_user_onlines(user, mac)
+        print(onlines)
+
+        for record in onlines:
+            data = {
+                'user':user,
+                'mac':mac,
+            }
+            if record['framed_ipaddr'] and record['nas_addr']:
+                data['user_ip'] = record['framed_ipaddr']
+                data['ac_ip'] = record['nas_addr']
+                bdata = urllib.urlencode(data).encode('utf-8')
+                # check nas_addr 
+                if record['nas_addr'] in ('172.31.1.102',):
+                    request = tornado.httpclient.HTTPRequest('http://112.94.162.4:9898/account', method='DELETE', body=bdata)
+                    http_client = tornado.httpclient.AsyncHTTPClient() 
+                    response = yield http_client.fetch(request)
+                    logger.info('response: {}'.format(response))
+                    if response.code != 200:
+                        raise response.error
+            else:
+                logger.info('can\'t found user:{} ip, mac:{}, logout failed'.format(user, mac))
+
+        self.render_json_response(Code=200, Msg='OK')
+
 
 #***************************************************
 #
