@@ -630,6 +630,7 @@ class MobileHandler(BaseHandler):
             is_by = True
         elif pn in ('15914', '59484') or self.request.remote_ip == '58.248.228.170' or self.request.remote_ip.startswith('14.215.'):
             is_pynx = True
+            pass
 
 
         verify = util.generate_verify_code()

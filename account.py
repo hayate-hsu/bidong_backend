@@ -212,7 +212,7 @@ def check_account_by_mobile_or_mac(mobile, mac):
         _user['existed'] = 0
         # _user = {'user':user, 'password':password, 'existed':0}
     else:
-        if _user['amobile'] != mobile:
+        if _user['amobile'] != mobile or _user['mobile'] != mobile:
             db.update_account(_user['user'], mobile=mobile)
 
         _user['existed'] = 1
