@@ -87,6 +87,7 @@ class Application(tornado.web.Application):
             (r'/account/?(.*)$', AccountHandler),
             # (r'/m_web/(.*)', WeiXinViewHandler),
             (r'/(.*?\.html)$', PageHandler),
+            (r'/stat$', StatHandler),
             # in product environment, use nginx to support static resources
             # (r'/(.*\.(?:css|jpg|png|js|ico|json))$', tornado.web.StaticFileHandler, 
             #  {'path':TEMPLATE_PATH}),
@@ -789,6 +790,20 @@ class PortalHandler(BaseHandler):
 
         self.render_json_response(Code=200, Msg='OK')
 
+class StatHandler(BaseHandler):
+    STAT = {}
+    def get(self):
+        nums = sum(self.STAT.values())
+        self.STAT = {}
+        self.render_json_response(nums=nums)
+
+    def post(self):
+        ip = self.get_argument('ip')
+        nums = int(self.get_argument('nums'))
+
+        self.STAT[ip] = nums
+
+        self.finish()
 
 #***************************************************
 #
