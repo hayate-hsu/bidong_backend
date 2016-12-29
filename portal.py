@@ -792,18 +792,20 @@ class PortalHandler(BaseHandler):
 
 class StatHandler(BaseHandler):
     STAT = {}
+    @_trace_wrapper
     def get(self):
         nums = sum(self.STAT.values())
         self.STAT = {}
-        self.render_json_response(nums=nums)
+        self.render_json_response(nums=nums, **OK)
 
+    @_trace_wrapper
     def post(self):
         ip = self.get_argument('ip')
         nums = int(self.get_argument('nums'))
 
         self.STAT[ip] = nums
+        self.render_json_response(nums=nums, **OK)
 
-        self.finish()
 
 #***************************************************
 #
