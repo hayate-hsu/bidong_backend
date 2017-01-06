@@ -68,7 +68,7 @@ json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
-TEMPLATE_PATH = '/www/portal'
+TEMPLATE_PATH = '/www/bidong'
 PAGE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
 
@@ -100,6 +100,7 @@ class Application(tornado.web.Application):
             (r'/version', VersionHandler),
 
             # get mobile verify code
+            (r'/mobile/(.*)/(.*)$', NotifyHandler),
             (r'/mobile$', MobileHandler),
             (r'/sms$', SmsHandler),
 
@@ -448,7 +449,7 @@ class AccountHandler(BaseHandler):
         if not _user:
             raise HTTPError(404, reason='account not existed')
 
-        days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
+        days, hours = util.format_left_time(_user['expired'], _user['coin'])
 
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
@@ -517,6 +518,47 @@ class AccountHandler(BaseHandler):
         account.remove_account(user, 1)
 
         self.render_json_response(**OK)
+
+class NotifyHandler(BaseHandler):
+    '''
+    '''
+    WEIMI_URL = 'http://api.weimi.cc/2/sms/send.html'
+    @_trace_wrapper
+    @tornado.gen.coroutine
+    @_parse_body
+    def post(self, mobile, action):
+        if not self.check_mobile(mobile):
+            raise HTTPError(400, reason='invalid mobile number')
+
+        # mobile = self.get_argument('mobile')
+        user = self.get_argument('user')
+        password = self.get_argument('password')
+
+        if action in ('notify',):
+            data = {
+                'uid':'3SSrNGX5O2eA',
+                'pas':'yq3skay4',
+                'mob': mobile,
+                # 'con': _const['notify'].format(user, password),
+                'cid':'LHqLxcqYIU1L',
+                'p1':user,
+                'p2':password,
+                'type':'json',
+            }
+            bdata = urllib.urlencode(data).encode('utf-8')
+            request = tornado.httpclient.HTTPRequest(MobileHandler.WEIMI_URL, method='POST', body=bdata)
+
+        elif action in ('verify',):
+            request = ''
+            pass
+
+        logger.info('send notify to {}, account: {}'.format(mobile, user))
+
+        http_client = tornado.httpclient.AsyncHTTPClient() 
+        response = yield http_client.fetch(request)
+        if response.code != 200:
+            raise response.error
+
 
 class BindHandler(BaseHandler):
     '''
@@ -590,7 +632,7 @@ class BindHandler(BaseHandler):
         
         account.bind(user, room)
         _user = account.get_bd_account(user)
-        days, hours = util.format_left_time(_user['expire_date'], _user['coin'])
+        days, hours = util.format_left_time(_user['expired'], _user['coin'])
         self.render_json_response(days=days, hours=hours, **OK)
 
     def unbind_room(self, user):
@@ -795,13 +837,17 @@ class StatHandler(BaseHandler):
     @_trace_wrapper
     def get(self):
         nums = sum(self.STAT.values())
-        self.STAT = {}
+        self.STAT.clear()
         self.render_json_response(nums=nums, **OK)
 
     @_trace_wrapper
     def post(self):
-        ip = self.get_argument('ip')
+        # ip = self.get_argument('ip')
         nums = int(self.get_argument('nums'))
+        ip = self.request.remote_ip
+
+        if ip in self.STAT:
+            nums += self.STAT[ip]
 
         self.STAT[ip] = nums
         self.render_json_response(nums=nums, **OK)
