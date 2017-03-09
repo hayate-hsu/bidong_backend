@@ -68,7 +68,7 @@ json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
 
 CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
-TEMPLATE_PATH = '/www/bidong'
+TEMPLATE_PATH = '/www/bidong' + '/portal'
 PAGE_PATH = os.path.join(TEMPLATE_PATH, 'm')
 
 
@@ -146,11 +146,11 @@ class BaseHandler(tornado.web.RequestHandler):
                                          output_encoding='utf-8',
                                          input_encoding='utf-8',
                                          encoding_errors='replace')
-    LOOK_UP_MOBILE = mako.lookup.TemplateLookup(directories=[PAGE_PATH, ], 
-                                                module_directory='/tmp/wnl/mako_mobile',
-                                                output_encoding='utf-8',
-                                                input_encoding='utf-8',
-                                                encoding_errors='replace')
+    # LOOK_UP_MOBILE = mako.lookup.TemplateLookup(directories=[PAGE_PATH, ], 
+    #                                             module_directory='/tmp/wnl/mako_mobile',
+    #                                             output_encoding='utf-8',
+    #                                             input_encoding='utf-8',
+    #                                             encoding_errors='replace')
 
     RESPONSES = {}
     RESPONSES.update(tornado.httputil.responses)
@@ -186,10 +186,7 @@ class BaseHandler(tornado.web.RequestHandler):
             pass request handler environment to template engine
         '''
         try:
-            if not self.is_mobile():
-                template = self.LOOK_UP.get_template(filename)
-            else:
-                template = self.LOOK_UP_MOBILE.get_template(filename)
+            template = self.LOOK_UP.get_template(filename)
             env_kwargs = dict(
                 handler = self,
                 request = self.request,
@@ -217,8 +214,6 @@ class BaseHandler(tornado.web.RequestHandler):
             Render the template with the given arguments
         '''
         template = TEMPLATE_PATH
-        if self.is_mobile():
-            template = PAGE_PATH
         if not os.path.exists(os.path.join(template, filename)):
             raise HTTPError(404, 'File Not Found')
         self.finish(self.render_string(filename, **kwargs))

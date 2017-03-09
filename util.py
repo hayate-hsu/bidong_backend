@@ -213,7 +213,7 @@ def format_left_time(expired, coin):
 
     if coin>0:
         # one coin = 3 minutes
-        times = coin*3*60
+        times = coin*10*60
         hours = '{:02d}:{:02d}'.format(int(times/3600), int(times%3600/60))
 
     return days, hours

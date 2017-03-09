@@ -882,7 +882,7 @@ class AccountHandler(AccountBaseHandler):
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, days=days, hours=hours, **OK)
         else:
-            self.render('mybidong.html', token=token, ad_url=ad_url, 
+            self.render('mybidong.html', token=token, ad_url=ad_url, ssid='BIDong', 
                         days=days, hours=hours, **_user)
     
     @_trace_wrapper
