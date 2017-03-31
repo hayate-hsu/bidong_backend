@@ -841,14 +841,13 @@ class FactoryHandler(AccountBaseHandler):
         if not _user:
             raise HTTPError(404, reason='account not existed')
 
-        days, hours = util.format_left_time(_user['expired'], _user['coin'])
+        # days, hours = util.format_left_time(_user['expired'], _user['coin'])
         ex_hours = int(_user['coin']/60)
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, **OK)
         else:
-            self.render(resource+'.html', token=token, 
-                        days=days, hours=hours, ex_hours=ex_hours, **_user)
+            self.render(resource+'.html', token=token, hours=ex_hours, **_user)
 
 class AccountHandler(AccountBaseHandler):
     '''
