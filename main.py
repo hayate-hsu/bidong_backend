@@ -882,6 +882,7 @@ class AccountHandler(AccountBaseHandler):
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, days=days, hours=hours, **OK)
         else:
+            hours = int(_user['coin']/60)
             self.render('mybidong.html', token=token, ad_url=ad_url, ssid='Bidong', 
                         days=days, hours=hours, **_user)
     
