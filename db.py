@@ -747,19 +747,19 @@ class Store():
         '''
         with Cursor(self.dbpool) as cur:
             cur.execute('select * from bd_account where user = "{}"'.format(user))
-            user = cur.fetchone()
-            # if user and user['mask'] & 1<<5:
-            #     # query weixin account binded renter
-            #     sql = 'select * from bind where weixin = "{}"'.format(user)
-            #     cur.execute(sql)
-            #     record = cur.fetchone()
-            #     if record:
-            #         sql = 'select expired from bd_account where user = "{}"'.format(record['renter'])
-            #         cur.execute(sql)
-            #         ret = cur.fetchone()
-            #         if ret:
-            #             user['expired'] = ret['expired']
-            return user
+            _user = cur.fetchone()
+            if _user and _user['mask'] & 1<<5:
+                # query weixin account binded renter
+                sql = 'select * from bind where weixin = "{}"'.format(user)
+                cur.execute(sql)
+                record = cur.fetchone()
+                if record:
+                    sql = 'select expired from bd_account where user = "{}"'.format(record['renter'])
+                    cur.execute(sql)
+                    ret = cur.fetchone()
+                    if ret:
+                        _user['expired'] = ret['expired']
+            return _user
 
     def get_bd_user2(self, user):
         '''
@@ -1013,10 +1013,10 @@ class Store():
                 return
 
             # check user type, must be renter room
-            cur.execute('select * from bd_account where user="{}" and mask>>8&1'.format(user))
-            record = cur.fetchone()
-            if not record:
-                return
+            # cur.execute('select * from bd_account where user="{}" and mask>>8&1'.format(user))
+            # record = cur.fetchone()
+            # if not record:
+            #     return
             sql = 'select * from bind where weixin = "{}"'.format(weixin)
             cur.execute(sql)
             if cur.fetchone():

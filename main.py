@@ -842,12 +842,13 @@ class FactoryHandler(AccountBaseHandler):
             raise HTTPError(404, reason='account not existed')
 
         days, hours = util.format_left_time(_user['expired'], _user['coin'])
+        ex_hours = int(_user['coin']/60)
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, **OK)
         else:
             self.render(resource+'.html', token=token, 
-                        days=days, hours=hours, **_user)
+                        days=days, hours=hours, ex_hours=ex_hours, **_user)
 
 class AccountHandler(AccountBaseHandler):
     '''
@@ -882,7 +883,7 @@ class AccountHandler(AccountBaseHandler):
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, days=days, hours=hours, **OK)
         else:
-            self.render('mybidong.html', token=token, ad_url=ad_url, ssid='BIDong', 
+            self.render('mybidong.html', token=token, ad_url=ad_url, ssid='Bidong', 
                         days=days, hours=hours, **_user)
     
     @_trace_wrapper
@@ -1072,14 +1073,16 @@ class HolderHandler(AccountBaseHandler):
 
         # get renters
         _user, renters = account.get_renters(holder)
-        _user.pop('possword', '')
+        _user.pop('password', '')
 
         accept = self.request.headers.get('Accept', 'text/html')
         if accept.startswith('application/json'):
             self.render_json_response(Account=_user, Renters=renters, **OK)
         else:
             _user['mobile'] = ''.join([_user['mobile'][:3], '****', _user['mobile'][7:]])
-            _user['realname'] = _user['realname'][0] + ' **'
+            realname = _user.get('realname', '')
+            _user['realname'] = realname[0] + ' **' if realname else ''
+            # _user['realname'] = _user['realname'][0] + ' **'
             self.render('addclient.html', token=token, date=_now('%Y-%m-%d'), 
                         renters=renters, **_user)
 
