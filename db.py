@@ -522,9 +522,12 @@ class Store():
         '''
         with Cursor(self.dbpool) as cur:
             # get holders
+            # sql = '''select bd_account.*, account.realname, account.address from bd_account 
+            # left join account on bd_account.user=cast(account.id as char) 
+            # where bd_account.holder="{}"'''.format(holder)
             sql = '''select bd_account.*, account.realname, account.address from bd_account 
             left join account on bd_account.user=cast(account.id as char) 
-            where bd_account.holder="{}"'''.format(holder)
+            where bd_account.user="{}"'''.format(holder)
             cur.execute(sql)
             bd_account = cur.fetchone()
             sql = 'select user, password, mask, expired, ends from bd_account where holder = "{}" and user<>cast(holder as char)'.format(holder)

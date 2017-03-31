@@ -9,7 +9,7 @@ menu = {
 	},
 	{
 		'type':'view',
-		'name':'赚咚币',
+		'name':'增加时间',
 		'url':'https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx3e09c0b3f5639426&redirect_uri=http%3A%2F%2Fwww.bidongwifi.com%2Fwx%2Fm_bidong%2Fearn_coin&response_type=code&scope=snsapi_base#wechat_redirect',
 	},
 	{
