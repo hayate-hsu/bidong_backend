@@ -1040,7 +1040,7 @@ class BindHandler(AccountHandler):
         account.bind(user, room)
         _user = account.get_bd_account(user)
         days, hours = util.format_left_time(_user['expired'], _user['coin'])
-        self.render_json_response(days=days, hours=hours, **OK)
+        self.render_json_response(days=days, hours=hours, expired=_user['expired'].strftime('%Y-%m-%d %H:%S'), **OK)
 
     def unbind_room(self, user):
         room = self.get_argument('room')
