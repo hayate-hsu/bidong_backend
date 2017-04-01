@@ -760,7 +760,7 @@ class Store():
                     sql = 'select expired from bd_account where user = "{}"'.format(record['renter'])
                     cur.execute(sql)
                     ret = cur.fetchone()
-                    if ret:
+                    if ret and ret['expired'] > _user['expired']:
                         _user['expired'] = ret['expired']
             return _user
 
