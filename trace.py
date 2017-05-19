@@ -14,17 +14,10 @@ def init(path='/var/log', port=8080):
         Initialize operating execute only ones for each web application. 
     '''
     global init
-    # log_path = os.path.join(path, 'bidong')
-    # check logs folder
-    if not os.path.exists(path):
-        os.mkdir(path)
     # create log folder with listening port
-    bidong_path = os.path.join(path, 'p_{}'.format(port))
-    if not os.path.exists(bidong_path):
-        os.mkdir(bidong_path)
+    log_file = os.path.join(path, '{}.log'.format(port))
     handler_config = settings['log']['handlers']
-    handler_config['file']['filename'] = '/'.join([bidong_path, 'service.log'])
-    handler_config['error']['filename'] = '/'.join([bidong_path, 'error.log'])
+    handler_config['file']['filename'] = log_file
     # handler_config['rotate_file']['filename'] = '/'.join([path, 'radius.log'])
 
     # read logging initial config and initial logger

@@ -67,9 +67,8 @@ import _const
 json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
 
-CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
-TEMPLATE_PATH = '/www/bidong' + '/portal'
-PAGE_PATH = os.path.join(TEMPLATE_PATH, 'm')
+STATIC_PATH = os.path.join(settings['www_path'], 'portal')
+TEMPLATE_PATH = os.path.join(settings['www_path'], 'portal/html')
 
 
 OK = {'Code':200, 'Msg':'OK'}
@@ -124,12 +123,12 @@ class Application(tornado.web.Application):
         ]
         settings = {
             'cookie_secret':util.sha1('bidong').hexdigest(), 
-            'static_path':TEMPLATE_PATH,
+            'static_path':STATIC_PATH,
             # 'static_url_prefix':'resource/',
             'debug':False,
             'autoreload':True,
             'autoescape':'xhtml_escape',
-            'i18n_path':os.path.join(CURRENT_PATH, 'resource/i18n'),
+            'i18n_path':os.path.join(STATIC_PATH, 'i18n'),
             # 'login_url':'',
             'xheaders':True,    # use headers like X-Real-IP to get the user's IP address instead of
                                 # attributeing all traffic to the balancer's IP address.
@@ -146,11 +145,6 @@ class BaseHandler(tornado.web.RequestHandler):
                                          output_encoding='utf-8',
                                          input_encoding='utf-8',
                                          encoding_errors='replace')
-    # LOOK_UP_MOBILE = mako.lookup.TemplateLookup(directories=[PAGE_PATH, ], 
-    #                                             module_directory='/tmp/wnl/mako_mobile',
-    #                                             output_encoding='utf-8',
-    #                                             input_encoding='utf-8',
-    #                                             encoding_errors='replace')
 
     RESPONSES = {}
     RESPONSES.update(tornado.httputil.responses)
@@ -213,9 +207,6 @@ class BaseHandler(tornado.web.RequestHandler):
         '''
             Render the template with the given arguments
         '''
-        template = TEMPLATE_PATH
-        if not os.path.exists(os.path.join(template, filename)):
-            raise HTTPError(404, 'File Not Found')
         self.finish(self.render_string(filename, **kwargs))
 
     def set_status(self, status_code, reason=None):
@@ -1059,11 +1050,11 @@ def main():
     global logger
     tornado.options.parse_command_line()
     import trace
-    trace.init(settings['LOG_PORTAL_PATH'], options.port)
+    trace.init(os.path.join(settings['log_path'], 'wnl'), options.port)
     logger = trace.logger('bidong', False)
     logger.setLevel(logging.INFO)
 
-    bidong_pid = os.path.join('/var/run/', 'sportal/p_{}.pid'.format(options.port))
+    bidong_pid = os.path.join(settings['run_path'], 'wnl/p_{}.pid'.format(options.port))
     with open(bidong_pid, 'w') as f:
         f.write('{}'.format(os.getpid()))
 

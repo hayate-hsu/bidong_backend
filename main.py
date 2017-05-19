@@ -67,9 +67,9 @@ WEIXIN_TOKEN = collections.defaultdict(dict)
 json_encoder = util.json_encoder2
 json_decoder = util.json_decoder
 
-CURRENT_PATH = os.path.abspath(os.path.dirname(__file__))
-TEMPLATE_PATH = settings['src_path']
-MOBILE_PATH = os.path.join(TEMPLATE_PATH, 'm')
+STATIC_PATH = settings['www_path']
+TEMPLATE_PATH = os.path.join(settings['www_path'], 'bidong')
+MOBILE_PATH = os.path.join(settings['www_path'], 'bidong/m')
 
 OK = {'Code':200, 'Msg':'OK'}
 
@@ -110,7 +110,7 @@ class Application(tornado.web.Application):
             'debug':False,
             'autoreload':True,
             'autoescape':'xhtml_escape',
-            'i18n_path':os.path.join(CURRENT_PATH, 'resource/i18n'),
+            'i18n_path':os.path.join(STATIC_PATH, 'i18n'),
             # 'login_url':'',
             'xheaders':True,    # use headers like X-Real-IP to get the user's IP address instead of
                                 # attributeing all traffic to the balancer's IP address.
@@ -470,7 +470,7 @@ class WeiXinHandler(BaseHandler):
     # # TOKEN = {'account_token':'', 'expire_seconds':0}
     # TOKEN = {'account_token':'', 'expire_seconds':0}
     # read token
-    _token_path = os.path.join(CURRENT_PATH, 'token.cnf')
+    _token_path = 'token.cnf'
     if os.path.exists(_token_path):
         with open(_token_path, 'r') as f:
             TOKEN = json_decoder(f.read())
@@ -1448,11 +1448,11 @@ def main():
     global logger
     tornado.options.parse_command_line()
     import trace
-    trace.init(settings['LOG_BD_PATH'], options.port)
+    trace.init(os.path.join(settings['log_path'], 'bidong'), options.port)
     logger = trace.logger('bidong', False)
     logger.setLevel(logging.INFO)
 
-    bidong_pid = os.path.join(settings['RUN_PATH'], 'p_{}.pid'.format(options.port))
+    bidong_pid = os.path.join(settings['run_path'], 'bidong/p_{}.pid'.format(options.port))
     with open(bidong_pid, 'w') as f:
         f.write('{}'.format(os.getpid()))
 
